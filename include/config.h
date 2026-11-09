@@ -11,4 +11,9 @@
 #define MIN_DELAY           1U
 #define MAX_DELAY           1000U
 
+#define MAX_TIME_NS         1000000000U
+#define MAX_EVENTS          1024U
+
+#define MAX_SET_LINES       256U
+
 #endif

@@ -1,0 +1,4 @@
+# ring5.stim : EN = 0 pushes known values round the ring, EN = 1 lets it run
+set EN 0 @0
+set EN 1 @10
+end 100

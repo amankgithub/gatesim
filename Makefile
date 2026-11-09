@@ -51,13 +51,17 @@ TEST_OBJ   := $(patsubst $(SRC_DIR)/%.c,$(TEST_BUILD)/src/%.o,$(LIB_SRC)) \
 
 DEPS       := $(OBJ:.o=.d) $(TEST_OBJ:.o=.d)
 
+# Arguments of the program for make run (override: make run ARGS="...")
+# demo: one inverter, pulses of width 1-4 ns
+ARGS       ?= data/inv_pulse.net data/inv_pulse.stim
+
 .PHONY: all run test clean check
 
 # ---- Main targets -----------------------------------------------------------
 all: $(APP_BIN)
 
 run: $(APP_BIN)
-	./$(APP_BIN)
+	./$(APP_BIN) $(ARGS)
 
 test: $(TEST_BIN)
 	./$(TEST_BIN)

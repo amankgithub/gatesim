@@ -24,16 +24,18 @@ typedef struct
     char         name[MAX_NAME_LEN];
     DriverKind_t driver;
     bool         is_output;
+    LogicValue_t value;
 } Net_t;
 
 typedef struct
 {
-    char       name[MAX_NAME_LEN];
-    GateType_t type;
-    uint8_t    in_count;
-    uint16_t   in[MAX_GATE_INPUTS];
-    uint16_t   out;
-    uint16_t   delay;
+    char         name[MAX_NAME_LEN];
+    GateType_t   type;
+    uint8_t      in_count;
+    uint16_t     in[MAX_GATE_INPUTS];
+    uint16_t     out;
+    uint16_t     delay;
+    LogicValue_t scheduled;
 } Gate_t;
 
 typedef struct
@@ -60,7 +62,7 @@ Status_t nl_init(Netlist_t *nl);
 /* Finds a net by name (linear search). */
 Status_t nl_find_net(const Netlist_t *nl, const char *name, uint16_t *out_index);
 
-/* Finds a net by name, or adds it at the end. A new net has no driver. */
+/* Finds a net by name, or adds it at the end. A new net has no driver and the value 0. */
 Status_t nl_find_or_add_net(Netlist_t *nl, const char *name, uint16_t *out_index);
 
 /* Declares one input net (found or added). */

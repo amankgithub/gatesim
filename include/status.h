@@ -32,6 +32,11 @@ typedef enum
     STATUS_TWO_DRIVERS,     /**< "net already has a driver" */
     STATUS_SYNTAX,          /**< "syntax error" */
     STATUS_UNKNOWN_KEYWORD, /**< "unknown keyword" */
+    STATUS_QUEUE_FULL,      /**< "event list full" */
+    STATUS_QUEUE_EMPTY,     /**< "event list empty" */
+    STATUS_TIME_OVERFLOW,   /**< "time overflow" */
+    STATUS_NOT_INPUT,       /**< "net is not an input" */
+    STATUS_NO_END,          /**< "missing end line" */
     STATUS_COUNT            /**< number of codes, keep last */
 } Status_t;
 

@@ -29,7 +29,12 @@ const char *status_text(Status_t status)
         "name not found",
         "net already has a driver",
         "syntax error",
-        "unknown keyword"
+        "unknown keyword",
+        "event list full",
+        "event list empty",
+        "time overflow",
+        "net is not an input",
+        "missing end line"
     };
     const char *text = STATUS_UNKNOWN_TEXT;
 

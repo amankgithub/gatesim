@@ -161,3 +161,38 @@ Status_t lg_type_from_name(const char *name, GateType_t *out_type)
     }
     return status;
 }
+
+Status_t lg_value_from_text(const char *text, LogicValue_t *out_value)
+{
+    Status_t status = STATUS_OK;
+
+    if ((text == NULL) || (out_value == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else if (strcmp(text, "0") == 0)
+    {
+        *out_value = LV_0;
+    }
+    else if (strcmp(text, "1") == 0)
+    {
+        *out_value = LV_1;
+    }
+    else
+    {
+        status = STATUS_BAD_NUMBER;
+    }
+    return status;
+}
+
+char lg_value_char(LogicValue_t value)
+{
+    static const char VALUE_CHARS[LV_COUNT] = { '0', '1' };
+    char shown = '?';
+
+    if (value < LV_COUNT)
+    {
+        shown = VALUE_CHARS[value];
+    }
+    return shown;
+}

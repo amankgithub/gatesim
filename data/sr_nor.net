@@ -1,0 +1,5 @@
+# sr_nor.net : SR latch from two NOR gates
+input  S R
+output Q QN
+gate n1 NOR #2  Q  = R QN
+gate n2 NOR #2  QN = S Q

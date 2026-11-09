@@ -120,6 +120,7 @@ Status_t nl_find_or_add_net(Netlist_t *nl, const char *name, uint16_t *out_index
             {
                 added.driver = DRV_NONE;
                 added.is_output = false;
+                added.value = LV_0;
                 index = nl->net_count;
                 nl->nets[index] = added;
                 nl->net_count++;

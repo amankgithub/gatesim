@@ -1,0 +1,3 @@
+# no_end.stim : for data/sr_nor.net; the end line is missing
+set S 0 @0
+set R 1 @0
