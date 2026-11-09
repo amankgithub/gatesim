@@ -1,0 +1,2 @@
+# Keep Unix line endings in the repository, whatever the editor uses
+* text=auto eol=lf
