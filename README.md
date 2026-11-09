@@ -6,5 +6,3 @@ checks your design (sequences, truth relations, unused states) and reports its t
 (race-around, glitches, settle time, maximum clock frequency).
 
 > Work in progress. The full README (problem, architecture, build, run, test, sample output) comes with version 1.
-
-Built step by step with AI assistance (Claude); see "How this project was built" in the final README.
