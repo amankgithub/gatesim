@@ -32,7 +32,7 @@ TEST(LogicOr, MatchesTruthTable)
     EXPECT_EQ(Eval2(GT_OR, LV_1, LV_1), LV_1);
 }
 
-TEST(LogicNot, InvertsBothValues)
+TEST(LogicNotBuf, NotInvertsBufCopies)
 {
     const LogicValue_t in_0[1] = {LV_0};
     const LogicValue_t in_1[1] = {LV_1};
@@ -42,16 +42,20 @@ TEST(LogicNot, InvertsBothValues)
     EXPECT_EQ(out, LV_1);
     ASSERT_EQ(lg_eval(GT_NOT, in_1, 1U, &out), STATUS_OK);
     EXPECT_EQ(out, LV_0);
+    ASSERT_EQ(lg_eval(GT_BUF, in_0, 1U, &out), STATUS_OK);
+    EXPECT_EQ(out, LV_0);
+    ASSERT_EQ(lg_eval(GT_BUF, in_1, 1U, &out), STATUS_OK);
+    EXPECT_EQ(out, LV_1);
 }
 
 TEST(LogicEval, RejectsWrongInputCount)
 {
-    const LogicValue_t inputs[3] = {LV_1, LV_1, LV_1};
+    const LogicValue_t inputs[5] = {LV_1, LV_1, LV_1, LV_1, LV_1};
     LogicValue_t out = SENTINEL;
 
     EXPECT_EQ(lg_eval(GT_NOT, inputs, 2U, &out), STATUS_INPUT_COUNT);
     EXPECT_EQ(lg_eval(GT_AND, inputs, 0U, &out), STATUS_INPUT_COUNT);
-    EXPECT_EQ(lg_eval(GT_AND, inputs, 3U, &out), STATUS_INPUT_COUNT);
+    EXPECT_EQ(lg_eval(GT_AND, inputs, 5U, &out), STATUS_INPUT_COUNT);
     EXPECT_EQ(out, SENTINEL);
 }
 
@@ -76,4 +80,35 @@ TEST(LogicType, ParsesNamesAndRejectsUnknown)
     EXPECT_EQ(lg_type_from_name("nand", &type), STATUS_UNKNOWN_TYPE);
     EXPECT_EQ(lg_type_from_name("", &type), STATUS_UNKNOWN_TYPE);
     EXPECT_EQ(type, GT_OR);
+}
+
+TEST(LogicXor, MatchesTruthTable)
+{
+    EXPECT_EQ(Eval2(GT_XOR, LV_0, LV_0), LV_0);
+    EXPECT_EQ(Eval2(GT_XOR, LV_0, LV_1), LV_1);
+    EXPECT_EQ(Eval2(GT_XOR, LV_1, LV_0), LV_1);
+    EXPECT_EQ(Eval2(GT_XOR, LV_1, LV_1), LV_0);
+
+    const LogicValue_t inputs[4] = {LV_1, LV_1, LV_1, LV_0};
+    LogicValue_t out = SENTINEL;
+    ASSERT_EQ(lg_eval(GT_XOR, inputs, 4U, &out), STATUS_OK);
+    EXPECT_EQ(out, LV_1);
+}
+
+TEST(LogicXnor, IsNotOfXor)
+{
+    const LogicValue_t values[2] = {LV_0, LV_1};
+
+    for (LogicValue_t a : values)
+    {
+        for (LogicValue_t b : values)
+        {
+            SCOPED_TRACE(testing::Message() << "a=" << int(a) << " b=" << int(b));
+            const LogicValue_t xor_value = Eval2(GT_XOR, a, b);
+            const LogicValue_t not_in[1] = {xor_value};
+            LogicValue_t not_xor = SENTINEL;
+            ASSERT_EQ(lg_eval(GT_NOT, not_in, 1U, &not_xor), STATUS_OK);
+            EXPECT_EQ(Eval2(GT_XNOR, a, b), not_xor);
+        }
+    }
 }

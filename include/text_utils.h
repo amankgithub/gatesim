@@ -41,6 +41,9 @@ Status_t tu_check_name(const char *name);
 /* Copies a text into a buffer of known size (bounded, never strcpy). */
 Status_t tu_copy_text(char *dst, uint32_t dst_size, const char *src);
 
+/* Fills an error message: text = what, or what + " '" + name + "'". */
+Status_t tu_set_diag(Diag_t *diag, const char *file, uint32_t line, const char *what, const char *name);
+
 #ifdef __cplusplus
 }
 #endif

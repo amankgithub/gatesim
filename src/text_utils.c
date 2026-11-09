@@ -212,6 +212,51 @@ Status_t tu_copy_text(char *dst, uint32_t dst_size, const char *src)
     return status;
 }
 
+Status_t tu_set_diag(Diag_t *diag, const char *file, uint32_t line, const char *what, const char *name)
+{
+    Status_t status = STATUS_OK;
+
+    if ((diag == NULL) || (what == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else
+    {
+        Diag_t result;
+
+        if (file != NULL)
+        {
+            status = tu_copy_text(result.file, MAX_PATH_LEN, file);
+        }
+        else
+        {
+            result.file[0] = '\0';
+        }
+        if (status == STATUS_OK)
+        {
+            if (name == NULL)
+            {
+                status = tu_copy_text(result.text, MAX_MSG_LEN, what);
+            }
+            else
+            {
+                const int written = snprintf(result.text, MAX_MSG_LEN, "%s '%s'", what, name);
+
+                if ((written < 0) || ((uint32_t)written >= MAX_MSG_LEN))
+                {
+                    status = STATUS_BAD_ARG;
+                }
+            }
+        }
+        if (status == STATUS_OK)
+        {
+            result.line = line;
+            *diag = result;
+        }
+    }
+    return status;
+}
+
 Status_t tu_open(LineReader_t *reader, const char *path)
 {
     Status_t status = STATUS_OK;

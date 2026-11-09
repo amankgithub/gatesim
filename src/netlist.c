@@ -31,6 +31,15 @@ static Status_t copy_name(char dst[MAX_NAME_LEN], const char *name)
     return status;
 }
 
+/* Fills the text of an error message: the status text and the offending word. */
+static void set_line_diag(Diag_t *diag, Status_t status, const char *word)
+{
+    if (tu_set_diag(diag, NULL, 0U, status_text(status), word) != STATUS_OK)
+    {
+        (void)tu_set_diag(diag, NULL, 0U, status_text(status), NULL);
+    }
+}
+
 /* Tells whether names[index] already appeared in names[0 .. index-1]. */
 static bool name_seen_before(const char *const names[], uint32_t index)
 {
@@ -190,60 +199,70 @@ Status_t nl_parse_delay(const char *word, uint16_t *out_delay)
     return status;
 }
 
-Status_t nl_parse_gate_words(char *const words[], uint32_t count, GateSpec_t *out_spec)
+/* Checks the words of a gate line (worker of nl_parse_gate_words). */
+static Status_t parse_gate_words(char *const words[], uint32_t count, GateSpec_t *out_spec,
+                                 uint32_t *out_bad_word)
 {
-    Status_t status = STATUS_NULL_ARG;
+    Status_t status = STATUS_OK;
+    uint32_t bad_word = 0U;
 
-    if ((words != NULL) && (out_spec != NULL))
+    if ((count < GATE_MIN_WORDS) || (strcmp(words[0], GATE_KEYWORD) != 0))
     {
-        status = STATUS_OK;
-        if ((count < GATE_MIN_WORDS) || (strcmp(words[0], GATE_KEYWORD) != 0))
+        status = STATUS_SYNTAX;
+    }
+    else
+    {
+        GateSpec_t spec;
+        const uint32_t in_count = count - GW_FIRST_IN;
+
+        (void)memset(&spec, 0, sizeof(spec));
+        bad_word = GW_NAME;
+        status = copy_name(spec.name, words[GW_NAME]);
+        if (status == STATUS_OK)
         {
+            bad_word = GW_TYPE;
+            status = lg_type_from_name(words[GW_TYPE], &spec.type);
+        }
+        if (status == STATUS_OK)
+        {
+            bad_word = GW_DELAY;
+            status = nl_parse_delay(words[GW_DELAY], &spec.delay);
+        }
+        if (status == STATUS_OK)
+        {
+            bad_word = GW_OUT;
+            status = copy_name(spec.out, words[GW_OUT]);
+        }
+        if ((status == STATUS_OK) && (strcmp(words[GW_ASSIGN], ASSIGN_WORD) != 0))
+        {
+            bad_word = GW_ASSIGN;
             status = STATUS_SYNTAX;
         }
-        else
+        if (status == STATUS_OK)
         {
-            GateSpec_t spec;
-            const uint32_t in_count = count - GW_FIRST_IN;
+            bad_word = GW_TYPE;
+            status = lg_check_input_count(spec.type, in_count);
+        }
+        if (status == STATUS_OK)
+        {
+            uint32_t i = 0U;
 
-            (void)memset(&spec, 0, sizeof(spec));
-            status = copy_name(spec.name, words[GW_NAME]);
-            if (status == STATUS_OK)
+            while ((i < in_count) && (status == STATUS_OK))
             {
-                status = lg_type_from_name(words[GW_TYPE], &spec.type);
-            }
-            if (status == STATUS_OK)
-            {
-                status = nl_parse_delay(words[GW_DELAY], &spec.delay);
-            }
-            if (status == STATUS_OK)
-            {
-                status = copy_name(spec.out, words[GW_OUT]);
-            }
-            if ((status == STATUS_OK) && (strcmp(words[GW_ASSIGN], ASSIGN_WORD) != 0))
-            {
-                status = STATUS_SYNTAX;
-            }
-            if (status == STATUS_OK)
-            {
-                status = lg_check_input_count(spec.type, in_count);
-            }
-            if (status == STATUS_OK)
-            {
-                uint32_t i = 0U;
-
-                while ((i < in_count) && (status == STATUS_OK))
-                {
-                    status = copy_name(spec.in[i], words[GW_FIRST_IN + i]);
-                    i++;
-                }
-            }
-            if (status == STATUS_OK)
-            {
-                spec.in_count = (uint8_t)in_count;
-                *out_spec = spec;
+                bad_word = GW_FIRST_IN + i;
+                status = copy_name(spec.in[i], words[GW_FIRST_IN + i]);
+                i++;
             }
         }
+        if (status == STATUS_OK)
+        {
+            spec.in_count = (uint8_t)in_count;
+            *out_spec = spec;
+        }
+    }
+    if (status != STATUS_OK)
+    {
+        *out_bad_word = bad_word;
     }
     return status;
 }
@@ -338,7 +357,7 @@ Status_t nl_add_gate(Netlist_t *nl, const GateSpec_t *spec)
 
 /* Check-only pass of an input or output line: every name, before any is added. */
 static Status_t check_declare_names(const Netlist_t *nl, const char *const names[], uint32_t name_count,
-                                    bool as_input)
+                                    bool as_input, uint32_t *out_bad_name)
 {
     Status_t status = STATUS_OK;
     uint32_t new_nets = 0U;
@@ -370,6 +389,10 @@ static Status_t check_declare_names(const Netlist_t *nl, const char *const names
                 new_nets++;
             }
         }
+        if (status != STATUS_OK)
+        {
+            *out_bad_name = i;
+        }
         i++;
     }
     if ((status == STATUS_OK) && (((uint32_t)nl->net_count + new_nets) > MAX_NETS))
@@ -380,17 +403,24 @@ static Status_t check_declare_names(const Netlist_t *nl, const char *const names
 }
 
 /* Handles "input A B ..." or "output Q QN ...": all names checked, then added. */
-static Status_t parse_declare_line(Netlist_t *nl, const char *const words[], uint32_t count, bool as_input)
+static Status_t parse_declare_line(Netlist_t *nl, const char *const words[], uint32_t count, bool as_input,
+                                   uint32_t *out_bad_word)
 {
     Status_t status = STATUS_SYNTAX;
+    uint32_t bad_word = 0U;
 
     if (count >= DECLARE_MIN_WORDS)
     {
         const char *const *const names = &words[1];
         const uint32_t name_count = count - 1U;
+        uint32_t bad_name = 0U;
         uint32_t i = 0U;
 
-        status = check_declare_names(nl, names, name_count, as_input);
+        status = check_declare_names(nl, names, name_count, as_input, &bad_name);
+        if ((status != STATUS_OK) && (status != STATUS_TABLE_FULL))
+        {
+            bad_word = bad_name + 1U;
+        }
         while ((i < name_count) && (status == STATUS_OK))
         {
             if (as_input)
@@ -404,17 +434,22 @@ static Status_t parse_declare_line(Netlist_t *nl, const char *const words[], uin
             i++;
         }
     }
+    if (status != STATUS_OK)
+    {
+        *out_bad_word = bad_word;
+    }
     return status;
 }
 
-Status_t nl_parse_line(Netlist_t *nl, char *line)
+Status_t nl_parse_line(Netlist_t *nl, char *line, Diag_t *out_diag)
 {
     Status_t status = STATUS_NULL_ARG;
 
-    if ((nl != NULL) && (line != NULL))
+    if ((nl != NULL) && (line != NULL) && (out_diag != NULL))
     {
         char *words[MAX_WORDS];
         uint32_t count = 0U;
+        uint32_t bad_word = 0U;
 
         status = tu_cut_comment(line);
         if (status == STATUS_OK)
@@ -425,26 +460,42 @@ Status_t nl_parse_line(Netlist_t *nl, char *line)
         {
             if (strcmp(words[0], INPUT_KEYWORD) == 0)
             {
-                status = parse_declare_line(nl, (const char *const *)words, count, true);
+                status = parse_declare_line(nl, (const char *const *)words, count, true, &bad_word);
             }
             else if (strcmp(words[0], OUTPUT_KEYWORD) == 0)
             {
-                status = parse_declare_line(nl, (const char *const *)words, count, false);
+                status = parse_declare_line(nl, (const char *const *)words, count, false, &bad_word);
             }
             else if (strcmp(words[0], GATE_KEYWORD) == 0)
             {
                 GateSpec_t spec;
 
-                status = nl_parse_gate_words(words, count, &spec);
+                status = parse_gate_words(words, count, &spec, &bad_word);
                 if (status == STATUS_OK)
                 {
                     status = nl_add_gate(nl, &spec);
+                    if (status == STATUS_TWO_DRIVERS)
+                    {
+                        bad_word = GW_OUT;
+                    }
                 }
             }
             else
             {
                 status = STATUS_UNKNOWN_KEYWORD;
             }
+            if (status != STATUS_OK)
+            {
+                set_line_diag(out_diag, status, words[bad_word]);
+            }
+        }
+        else if (status != STATUS_OK)
+        {
+            set_line_diag(out_diag, status, NULL);
+        }
+        else
+        {
+            /* an empty or comment-only line */
         }
     }
     return status;
@@ -462,19 +513,34 @@ Status_t nl_init(Netlist_t *nl)
     return status;
 }
 
-Status_t nl_load(Netlist_t *nl, const char *path, uint32_t *out_line)
+Status_t nl_parse_gate_words(char *const words[], uint32_t count, GateSpec_t *out_spec)
 {
     Status_t status = STATUS_NULL_ARG;
 
-    if ((nl != NULL) && (path != NULL) && (out_line != NULL))
+    if ((words != NULL) && (out_spec != NULL))
+    {
+        uint32_t bad_word = 0U;
+
+        status = parse_gate_words(words, count, out_spec, &bad_word);
+    }
+    return status;
+}
+
+Status_t nl_load(Netlist_t *nl, const char *path, Diag_t *out_diag)
+{
+    Status_t status = STATUS_NULL_ARG;
+
+    if ((nl != NULL) && (path != NULL) && (out_diag != NULL))
     {
         LineReader_t reader;
+        Diag_t diag;
+        uint32_t error_line = 0U;
 
         clear_tables(nl);
         status = tu_open(&reader, path);
         if (status != STATUS_OK)
         {
-            *out_line = 0U;
+            set_line_diag(&diag, status, NULL);
         }
         else
         {
@@ -493,21 +559,32 @@ Status_t nl_load(Netlist_t *nl, const char *path, uint32_t *out_line)
                 else if (read_status != STATUS_OK)
                 {
                     status = read_status;
+                    set_line_diag(&diag, status, NULL);
                 }
                 else
                 {
-                    status = nl_parse_line(nl, line);
+                    status = nl_parse_line(nl, line, &diag);
                 }
+            }
+            if (status != STATUS_OK)
+            {
+                error_line = reader.line_no;
             }
             close_status = tu_close(&reader);
             if (status == STATUS_OK)
             {
                 status = close_status;
+                if (status != STATUS_OK)
+                {
+                    set_line_diag(&diag, status, NULL);
+                }
             }
-            if (status != STATUS_OK)
-            {
-                *out_line = reader.line_no;
-            }
+        }
+        if (status != STATUS_OK)
+        {
+            (void)tu_copy_text(diag.file, MAX_PATH_LEN, path);
+            diag.line = error_line;
+            *out_diag = diag;
         }
     }
     return status;

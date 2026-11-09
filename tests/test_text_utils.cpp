@@ -198,3 +198,23 @@ TEST(OpenFile, MissingFileFails)
     EXPECT_EQ(reader.fp, nullptr);
     EXPECT_EQ(reader.line_no, SENTINEL);
 }
+
+TEST(SetDiag, FormatsWhatAndName)
+{
+    Diag_t diag = {};
+
+    ASSERT_EQ(tu_set_diag(&diag, "x.net", 4U, "unknown gate type", "NAN"), STATUS_OK);
+    EXPECT_STREQ(diag.file, "x.net");
+    EXPECT_EQ(diag.line, 4U);
+    EXPECT_STREQ(diag.text, "unknown gate type 'NAN'");
+
+    ASSERT_EQ(tu_set_diag(&diag, nullptr, 0U, "missing end line", nullptr), STATUS_OK);
+    EXPECT_STREQ(diag.file, "");
+    EXPECT_EQ(diag.line, 0U);
+    EXPECT_STREQ(diag.text, "missing end line");
+
+    /* a text that does not fit MAX_MSG_LEN: BAD_ARG, the message unchanged */
+    const std::string long_name(MAX_MSG_LEN, 'a');
+    EXPECT_EQ(tu_set_diag(&diag, "x.net", 4U, "not a valid name", long_name.c_str()), STATUS_BAD_ARG);
+    EXPECT_STREQ(diag.text, "missing end line");
+}

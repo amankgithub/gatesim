@@ -21,7 +21,10 @@ typedef enum
     GT_OR,
     GT_NAND,
     GT_NOR,
+    GT_XOR,
+    GT_XNOR,
     GT_NOT,
+    GT_BUF,
     GT_COUNT
 } GateType_t;
 

@@ -37,7 +37,7 @@ Status_t lg_check_input_count(GateType_t type, uint32_t count)
     {
         status = STATUS_BAD_ARG;
     }
-    else if (type == GT_NOT)
+    else if ((type == GT_NOT) || (type == GT_BUF))
     {
         if (count != 1U)
         {
@@ -81,6 +81,11 @@ Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, L
         { LV_0, LV_1 },
         { LV_1, LV_1 }
     };
+    static const LogicValue_t XOR_TABLE[LV_COUNT][LV_COUNT] =
+    {
+        { LV_0, LV_1 },
+        { LV_1, LV_0 }
+    };
     static const LogicValue_t NOT_TABLE[LV_COUNT] = { LV_1, LV_0 };
     Status_t status = STATUS_OK;
 
@@ -113,8 +118,17 @@ Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, L
                 case GT_NOR:
                     result = NOT_TABLE[combine_inputs(OR_TABLE, inputs, count)];
                     break;
+                case GT_XOR:
+                    result = combine_inputs(XOR_TABLE, inputs, count);
+                    break;
+                case GT_XNOR:
+                    result = NOT_TABLE[combine_inputs(XOR_TABLE, inputs, count)];
+                    break;
                 case GT_NOT:
                     result = NOT_TABLE[inputs[0]];
+                    break;
+                case GT_BUF:
+                    result = inputs[0];
                     break;
                 default:
                     status = STATUS_BAD_ARG;
@@ -137,7 +151,10 @@ Status_t lg_type_from_name(const char *name, GateType_t *out_type)
         { "OR",   GT_OR   },
         { "NAND", GT_NAND },
         { "NOR",  GT_NOR  },
-        { "NOT",  GT_NOT  }
+        { "XOR",  GT_XOR  },
+        { "XNOR", GT_XNOR },
+        { "NOT",  GT_NOT  },
+        { "BUF",  GT_BUF  }
     };
     Status_t status = STATUS_UNKNOWN_TYPE;
 

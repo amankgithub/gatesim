@@ -36,16 +36,16 @@ protected:
     /* Loads a netlist and empties the event list. */
     void Load(const char *path)
     {
-        uint32_t line = 0U;
-        ASSERT_EQ(nl_load(&nl, path, &line), STATUS_OK) << path << " line " << line;
+        Diag_t diag = {};
+        ASSERT_EQ(nl_load(&nl, path, &diag), STATUS_OK) << diag.file << ":" << diag.line << ": " << diag.text;
         ASSERT_EQ(eq_init(&queue), STATUS_OK);
     }
 
     /* Loads a stimulus file and adds its events; returns its end time. */
     uint32_t Seed(const char *path)
     {
-        uint32_t line = 0U;
-        EXPECT_EQ(st_load(&st, &nl, path, &line), STATUS_OK) << path << " line " << line;
+        Diag_t diag = {};
+        EXPECT_EQ(st_load(&st, &nl, path, &diag), STATUS_OK) << diag.file << ":" << diag.line << ": " << diag.text;
         EXPECT_EQ(st_seed(&st, &queue), STATUS_OK);
         return st.end_time;
     }

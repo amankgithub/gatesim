@@ -78,10 +78,10 @@ Status_t nl_parse_gate_words(char *const words[], uint32_t count, GateSpec_t *ou
 Status_t nl_add_gate(Netlist_t *nl, const GateSpec_t *spec);
 
 /* Handles one line of a .net file: input, output or gate. */
-Status_t nl_parse_line(Netlist_t *nl, char *line);
+Status_t nl_parse_line(Netlist_t *nl, char *line, Diag_t *out_diag);
 
 /* Reads a whole .net file into the tables (they are emptied first). */
-Status_t nl_load(Netlist_t *nl, const char *path, uint32_t *out_line);
+Status_t nl_load(Netlist_t *nl, const char *path, Diag_t *out_diag);
 
 #ifdef __cplusplus
 }

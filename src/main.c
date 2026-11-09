@@ -3,7 +3,7 @@
  * @brief   Entry point of GateSim: the command line and the high-level flow only.
  * @details `gatesim <netlist.net> <stimulus.stim>`: load both files, run the simulation
  *          and print every change of an output net, then why and when the run stopped.
- *          Errors go to stderr as "gatesim: file:line: text". Console output uses
+ *          Errors go to stderr as "gatesim: file:line: text 'word'". Console output uses
  *          <stdio.h>: a recorded MISRA C:2012 Rule 21.6 deviation.
  */
 #include <inttypes.h>
@@ -33,16 +33,20 @@ static void print_usage(void)
     (void)fprintf(stderr, "usage: gatesim <netlist.net> <stimulus.stim>\n");
 }
 
-/* Prints a load error on stderr: "gatesim: file:line: text" (no line part for line 0). */
-static void print_load_error(const char *path, uint32_t line, Status_t status)
+/* Prints a load error on stderr: "gatesim: file:line: text" */
+static void print_diag(const Diag_t *diag)
 {
-    if (line == 0U)
+    if (diag->file[0] == '\0')
     {
-        (void)fprintf(stderr, "gatesim: %s: %s\n", path, status_text(status));
+        (void)fprintf(stderr, "gatesim: %s\n", diag->text);
+    }
+    else if (diag->line == 0U)
+    {
+        (void)fprintf(stderr, "gatesim: %s: %s\n", diag->file, diag->text);
     }
     else
     {
-        (void)fprintf(stderr, "gatesim: %s:%" PRIu32 ": %s\n", path, line, status_text(status));
+        (void)fprintf(stderr, "gatesim: %s:%" PRIu32 ": %s\n", diag->file, diag->line, diag->text);
     }
 }
 
@@ -99,20 +103,20 @@ int main(int argc, char *argv[])
     {
         const char *const net_path = argv[1];
         const char *const stim_path = argv[2];
-        uint32_t line = 0U;
-        Status_t status = nl_load(&nl, net_path, &line);
+        Diag_t diag;
+        Status_t status = nl_load(&nl, net_path, &diag);
 
         if (status != STATUS_OK)
         {
-            print_load_error(net_path, line, status);
+            print_diag(&diag);
             code = EXIT_INPUT_ERROR;
         }
         else
         {
-            status = st_load(&st, &nl, stim_path, &line);
+            status = st_load(&st, &nl, stim_path, &diag);
             if (status != STATUS_OK)
             {
-                print_load_error(stim_path, line, status);
+                print_diag(&diag);
                 code = EXIT_INPUT_ERROR;
             }
         }

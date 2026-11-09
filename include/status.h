@@ -3,9 +3,14 @@
  * @brief   One status type for every GateSim module, with a readable text per code.
  * @details Every function that can fail returns a Status_t. New codes are always
  *          appended just before STATUS_COUNT, so existing values never change.
+ *          A reader that fails also fills a Diag_t, the message shown to the user.
  */
 #ifndef STATUS_H
 #define STATUS_H
+
+#include <stdint.h>
+
+#include "config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,6 +44,14 @@ typedef enum
     STATUS_NO_END,          /**< "missing end line" */
     STATUS_COUNT            /**< number of codes, keep last */
 } Status_t;
+
+/** @brief One error message for the user: "file:line: text". */
+typedef struct
+{
+    char     file[MAX_PATH_LEN];   /**< the file, "" when not tied to a file */
+    uint32_t line;                 /**< the line, 1-based; 0 when not tied to a line */
+    char     text[MAX_MSG_LEN];    /**< status text, often followed by the offending word in quotes */
+} Diag_t;
 
 /**
  * @brief   Gives the readable text of a status code (for error messages).

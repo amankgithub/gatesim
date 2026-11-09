@@ -24,17 +24,19 @@ class NetlistTest : public ::testing::Test
 {
 protected:
     static Netlist_t nl;
+    static Diag_t diag;
 
     void SetUp() override
     {
         ASSERT_EQ(nl_init(&nl), STATUS_OK);
+        diag = Diag_t{};
     }
 
     /* Parses one line of text (nl_parse_line changes its line, so it gets a copy). */
     static Status_t Parse(const char *text)
     {
         std::vector<char> line(text, text + std::strlen(text) + 1U);
-        return nl_parse_line(&nl, line.data());
+        return nl_parse_line(&nl, line.data(), &diag);
     }
 
     /* Parses the SR latch lines; every one must be accepted. */
@@ -68,6 +70,7 @@ protected:
 };
 
 Netlist_t NetlistTest::nl;
+Diag_t NetlistTest::diag;
 
 class FindOrAdd : public NetlistTest
 {
@@ -168,15 +171,17 @@ TEST(ParseDelay, RejectsBadDelays)
 
 TEST_F(GateLine, ValidLineAddsGate)
 {
-    ASSERT_EQ(Parse("gate g1 NAND #2  a1 = J CLK"), STATUS_OK);
+    ASSERT_EQ(Parse("gate m1 NAND #2  a1 = J CLK QN CLR"), STATUS_OK);
     ASSERT_EQ(nl.gate_count, 1U);
 
     const Gate_t &g = nl.gates[0];
-    EXPECT_STREQ(g.name, "g1");
+    EXPECT_STREQ(g.name, "m1");
     EXPECT_EQ(g.type, GT_NAND);
-    ASSERT_EQ(g.in_count, 2U);
+    ASSERT_EQ(g.in_count, 4U);
     EXPECT_EQ(NetName(g.in[0]), "J");
     EXPECT_EQ(NetName(g.in[1]), "CLK");
+    EXPECT_EQ(NetName(g.in[2]), "QN");
+    EXPECT_EQ(NetName(g.in[3]), "CLR");
     EXPECT_EQ(NetName(g.out), "a1");
     EXPECT_EQ(nl.nets[g.out].driver, DRV_GATE);
     EXPECT_EQ(g.delay, 2U);
@@ -186,7 +191,7 @@ TEST_F(GateLine, RejectsUnknownTypeAndBadCounts)
 {
     EXPECT_EQ(Parse("gate g1 NAN #2 y = a b"), STATUS_UNKNOWN_TYPE);
     EXPECT_EQ(Parse("gate g1 NOT #2 y = a b"), STATUS_INPUT_COUNT);
-    EXPECT_EQ(Parse("gate g1 NAND #2 y = a b c"), STATUS_INPUT_COUNT);
+    EXPECT_EQ(Parse("gate g1 NAND #2 y = a b c d e"), STATUS_INPUT_COUNT);
     EXPECT_EQ(Parse("gate g1 NAND #2 y : a b"), STATUS_SYNTAX);
     EXPECT_EQ(nl.net_count, 0U);
     EXPECT_EQ(nl.gate_count, 0U);
@@ -227,15 +232,15 @@ TEST_F(ParseLine, SrLatchTablesAsExpected)
 TEST_F(ParseLine, RejectsUnknownKeyword)
 {
     EXPECT_EQ(Parse("wire a"), STATUS_UNKNOWN_KEYWORD);
+    EXPECT_STREQ(diag.text, "unknown keyword 'wire'");
     EXPECT_EQ(nl.net_count, 0U);
 }
 
 TEST_F(LoadNetlist, Ring5FromFile)
 {
-    uint32_t line = SENTINEL;
-
-    ASSERT_EQ(nl_load(&nl, "data/ring5.net", &line), STATUS_OK);
-    EXPECT_EQ(line, SENTINEL);
+    diag.line = SENTINEL;
+    ASSERT_EQ(nl_load(&nl, "data/ring5.net", &diag), STATUS_OK) << diag.text;
+    EXPECT_EQ(diag.line, SENTINEL);
     EXPECT_EQ(nl.gate_count, 5U);
     EXPECT_EQ(nl.net_count, 6U);
     EXPECT_EQ(NetName(0U), "EN");
@@ -244,12 +249,14 @@ TEST_F(LoadNetlist, Ring5FromFile)
 
 TEST_F(LoadNetlist, ErrorHasFileAndLine)
 {
-    uint32_t line = SENTINEL;
+    EXPECT_EQ(nl_load(&nl, "tests/data/bad_type.net", &diag), STATUS_UNKNOWN_TYPE);
+    EXPECT_STREQ(diag.file, "tests/data/bad_type.net");
+    EXPECT_EQ(diag.line, 3U);
+    EXPECT_STREQ(diag.text, "unknown gate type 'NAN'");
 
-    EXPECT_EQ(nl_load(&nl, "tests/data/bad_type.net", &line), STATUS_UNKNOWN_TYPE);
-    EXPECT_EQ(line, 3U);
-
-    line = SENTINEL;
-    EXPECT_EQ(nl_load(&nl, "tests/data/no_such_file.net", &line), STATUS_FILE_OPEN);
-    EXPECT_EQ(line, 0U);
+    diag.line = SENTINEL;
+    EXPECT_EQ(nl_load(&nl, "tests/data/no_such_file.net", &diag), STATUS_FILE_OPEN);
+    EXPECT_STREQ(diag.file, "tests/data/no_such_file.net");
+    EXPECT_EQ(diag.line, 0U);
+    EXPECT_STREQ(diag.text, "cannot open file");
 }

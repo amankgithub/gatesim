@@ -33,10 +33,10 @@ typedef struct
 Status_t st_init(Stimulus_t *st);
 
 /* Handles one line of a .stim file: `set NET VALUE */
-Status_t st_parse_line(Stimulus_t *st, const Netlist_t *nl, char *line);
+Status_t st_parse_line(Stimulus_t *st, const Netlist_t *nl, char *line, Diag_t *out_diag);
 
 /* Reads a whole .stim file line by line, then checks that it had an end line. */
-Status_t st_load(Stimulus_t *st, const Netlist_t *nl, const char *path, uint32_t *out_line);
+Status_t st_load(Stimulus_t *st, const Netlist_t *nl, const char *path, Diag_t *out_diag);
 
 /* Adds the first events of a run: one EV_SET per set line, in file order. */
 Status_t st_seed(const Stimulus_t *st, EventQueue_t *queue);
