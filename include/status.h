@@ -14,10 +14,12 @@ extern "C" {
 /** @brief Result of every GateSim function that can fail. */
 typedef enum
 {
-    STATUS_OK = 0,      /**< "ok" */
-    STATUS_NULL_ARG,    /**< "null pointer argument" */
-    STATUS_BAD_ARG,     /**< "argument out of range" */
-    STATUS_COUNT        /**< number of codes, keep last */
+    STATUS_OK = 0,          /**< "ok" */
+    STATUS_NULL_ARG,        /**< "null pointer argument" */
+    STATUS_BAD_ARG,         /**< "argument out of range" */
+    STATUS_UNKNOWN_TYPE,    /**< "unknown gate type" */
+    STATUS_INPUT_COUNT,     /**< "wrong number of inputs for this gate type" */
+    STATUS_COUNT            /**< number of codes, keep last */
 } Status_t;
 
 /**

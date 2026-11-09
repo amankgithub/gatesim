@@ -14,7 +14,9 @@ const char *status_text(Status_t status)
     {
         "ok",
         "null pointer argument",
-        "argument out of range"
+        "argument out of range",
+        "unknown gate type",
+        "wrong number of inputs for this gate type"
     };
     const char *text = STATUS_UNKNOWN_TEXT;
 
