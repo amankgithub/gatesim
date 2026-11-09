@@ -29,8 +29,7 @@ static bool values_are_valid(const LogicValue_t inputs[], uint32_t count)
     return valid;
 }
 
-/* Checks the number of inputs for a gate type (shared by lg_eval and lg_check_input_count). */
-static Status_t check_input_count(GateType_t type, uint32_t count)
+Status_t lg_check_input_count(GateType_t type, uint32_t count)
 {
     Status_t status = STATUS_OK;
 
@@ -91,7 +90,7 @@ Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, L
     }
     else
     {
-        status = check_input_count(type, count);
+        status = lg_check_input_count(type, count);
         if ((status == STATUS_OK) && !values_are_valid(inputs, count))
         {
             status = STATUS_BAD_ARG;
@@ -128,11 +127,6 @@ Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, L
         }
     }
     return status;
-}
-
-Status_t lg_check_input_count(GateType_t type, uint32_t count)
-{
-    return check_input_count(type, count);
 }
 
 Status_t lg_type_from_name(const char *name, GateType_t *out_type)

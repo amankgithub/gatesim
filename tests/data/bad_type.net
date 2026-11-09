@@ -1,0 +1,4 @@
+# bad_type.net : line 3 uses a gate type that does not exist
+input A
+gate g1 NAN #2  Y = A
+output Y

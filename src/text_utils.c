@@ -1,0 +1,320 @@
+#include "text_utils.h"
+
+#include <errno.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define DECIMAL_BASE    10
+
+/* Tells whether a character separates words (space or tab). */
+static bool is_separator(char c)
+{
+    return ((c == ' ') || (c == '\t'));
+}
+
+/* Tells whether a character is a decimal digit. */
+static bool is_digit(char c)
+{
+    return ((c >= '0') && (c <= '9'));
+}
+
+/* Counts the words of a line without changing it. */
+static uint32_t count_words(const char *line)
+{
+    uint32_t count = 0U;
+    uint32_t i = 0U;
+    bool in_word = false;
+
+    while (line[i] != '\0')
+    {
+        if (is_separator(line[i]))
+        {
+            in_word = false;
+        }
+        else if (!in_word)
+        {
+            in_word = true;
+            count++;
+        }
+        else
+        {
+            /* still inside the same word */
+        }
+        i++;
+    }
+    return count;
+}
+
+Status_t tu_cut_comment(char *line)
+{
+    Status_t status = STATUS_NULL_ARG;
+
+    if (line != NULL)
+    {
+        uint32_t i = 0U;
+        bool found = false;
+
+        while ((line[i] != '\0') && !found)
+        {
+            if ((line[i] == '#') && !is_digit(line[i + 1U]))
+            {
+                line[i] = '\0';
+                found = true;
+            }
+            else
+            {
+                i++;
+            }
+        }
+        status = STATUS_OK;
+    }
+    return status;
+}
+
+Status_t tu_split_words(char *line, char *words[], uint32_t max_words, uint32_t *out_count)
+{
+    Status_t status = STATUS_OK;
+
+    if ((line == NULL) || (words == NULL) || (out_count == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else if (max_words == 0U)
+    {
+        status = STATUS_BAD_ARG;
+    }
+    else if (count_words(line) > max_words)
+    {
+        status = STATUS_TOO_MANY_WORDS;
+    }
+    else
+    {
+        uint32_t count = 0U;
+        uint32_t i = 0U;
+        bool in_word = false;
+
+        while (line[i] != '\0')
+        {
+            if (is_separator(line[i]))
+            {
+                if (in_word)
+                {
+                    line[i] = '\0';
+                    in_word = false;
+                }
+            }
+            else if (!in_word)
+            {
+                words[count] = &line[i];
+                count++;
+                in_word = true;
+            }
+            else
+            {
+                /* still inside the same word */
+            }
+            i++;
+        }
+        *out_count = count;
+    }
+    return status;
+}
+
+Status_t tu_parse_u32(const char *text, uint32_t min_value, uint32_t max_value, uint32_t *out_value)
+{
+    Status_t status = STATUS_OK;
+
+    if ((text == NULL) || (out_value == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else if (min_value > max_value)
+    {
+        status = STATUS_BAD_ARG;
+    }
+    else if (text[0] == '\0')
+    {
+        status = STATUS_BAD_NUMBER;
+    }
+    else
+    {
+        uint32_t i = 0U;
+
+        while ((text[i] != '\0') && (status == STATUS_OK))
+        {
+            if (!is_digit(text[i]))
+            {
+                status = STATUS_BAD_NUMBER;
+            }
+            i++;
+        }
+        if (status == STATUS_OK)
+        {
+            unsigned long value;
+
+            errno = 0;
+            value = strtoul(text, NULL, DECIMAL_BASE);
+            if ((errno == ERANGE) || (value < (unsigned long)min_value) || (value > (unsigned long)max_value))
+            {
+                status = STATUS_BAD_NUMBER;
+            }
+            else
+            {
+                *out_value = (uint32_t)value;
+            }
+        }
+    }
+    return status;
+}
+
+Status_t tu_check_name(const char *name)
+{
+    Status_t status = STATUS_OK;
+
+    if (name == NULL)
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else
+    {
+        uint32_t length = 0U;
+
+        while ((length < MAX_NAME_LEN) && (name[length] != '\0'))
+        {
+            length++;
+        }
+        if ((length == 0U) || (length >= MAX_NAME_LEN))
+        {
+            status = STATUS_BAD_NAME;
+        }
+    }
+    return status;
+}
+
+Status_t tu_copy_text(char *dst, uint32_t dst_size, const char *src)
+{
+    Status_t status = STATUS_OK;
+
+    if ((dst == NULL) || (src == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else if ((dst_size == 0U) || (strlen(src) >= (size_t)dst_size))
+    {
+        status = STATUS_BAD_ARG;
+    }
+    else
+    {
+        (void)memcpy(dst, src, strlen(src) + 1U);
+    }
+    return status;
+}
+
+Status_t tu_open(LineReader_t *reader, const char *path)
+{
+    Status_t status = STATUS_OK;
+
+    if ((reader == NULL) || (path == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else
+    {
+        FILE *const fp = fopen(path, "r");
+
+        if (fp == NULL)
+        {
+            status = STATUS_FILE_OPEN;
+        }
+        else
+        {
+            reader->fp = fp;
+            reader->line_no = 0U;
+        }
+    }
+    return status;
+}
+
+Status_t tu_read_line(LineReader_t *reader, char *buf, uint32_t buf_size)
+{
+    Status_t status = STATUS_OK;
+
+    if ((reader == NULL) || (buf == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else if ((reader->fp == NULL) || (buf_size < 2U) || (buf_size > MAX_LINE_LEN))
+    {
+        status = STATUS_BAD_ARG;
+    }
+    else
+    {
+        char line[MAX_LINE_LEN];
+
+        if (fgets(line, (int)buf_size, reader->fp) == NULL)
+        {
+            if (ferror(reader->fp) != 0)
+            {
+                status = STATUS_FILE_READ;
+            }
+            else
+            {
+                status = STATUS_END_OF_FILE;
+            }
+        }
+        else
+        {
+            size_t len = strlen(line);
+
+            reader->line_no++;
+            if ((len > 0U) && (line[len - 1U] == '\n'))
+            {
+                len--;
+                line[len] = '\0';
+            }
+            else if (feof(reader->fp) == 0)
+            {
+                status = STATUS_LINE_TOO_LONG;
+            }
+            else
+            {
+                /* the last line of a file without a final '\n' */
+            }
+            if (status == STATUS_OK)
+            {
+                if ((len > 0U) && (line[len - 1U] == '\r'))
+                {
+                    len--;
+                    line[len] = '\0';
+                }
+                (void)memcpy(buf, line, len + 1U);
+            }
+        }
+    }
+    return status;
+}
+
+Status_t tu_close(LineReader_t *reader)
+{
+    Status_t status = STATUS_OK;
+
+    if (reader == NULL)
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else if (reader->fp != NULL)
+    {
+        if (fclose(reader->fp) != 0)
+        {
+            status = STATUS_FILE_READ;
+        }
+        reader->fp = NULL;
+    }
+    else
+    {
+        /* already closed: nothing to do */
+    }
+    return status;
+}

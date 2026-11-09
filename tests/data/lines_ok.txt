@@ -1,0 +1,4 @@
+first line
+second line with words
+
+fourth line after a blank one

@@ -1,0 +1,8 @@
+# ring5.net : ring oscillator, a NAND with an enable plus 4 inverters, every delay 2
+input  EN
+output n0 n1 n2 n3 n4
+gate g0 NAND #2  n0 = EN n4
+gate g1 NOT  #2  n1 = n0
+gate g2 NOT  #2  n2 = n1
+gate g3 NOT  #2  n3 = n2
+gate g4 NOT  #2  n4 = n3

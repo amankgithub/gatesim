@@ -12,3 +12,7 @@ max_line_length = 120
 
 [Makefile]
 indent_style = tab
+
+[tests/data/lines_crlf.txt]
+end_of_line = crlf
+trim_trailing_whitespace = false

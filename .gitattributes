@@ -1,2 +1,5 @@
 # Keep Unix line endings in the repository, whatever the editor uses
 * text=auto eol=lf
+
+# Test data that must keep its Windows (CRLF) line endings
+tests/data/lines_crlf.txt -text

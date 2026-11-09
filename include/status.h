@@ -19,6 +19,19 @@ typedef enum
     STATUS_BAD_ARG,         /**< "argument out of range" */
     STATUS_UNKNOWN_TYPE,    /**< "unknown gate type" */
     STATUS_INPUT_COUNT,     /**< "wrong number of inputs for this gate type" */
+    STATUS_TOO_MANY_WORDS,  /**< "too many words on the line" */
+    STATUS_BAD_NUMBER,      /**< "not a valid number" */
+    STATUS_BAD_NAME,        /**< "not a valid name" */
+    STATUS_FILE_OPEN,       /**< "cannot open file" */
+    STATUS_FILE_READ,       /**< "cannot read file" */
+    STATUS_END_OF_FILE,     /**< "end of file" */
+    STATUS_LINE_TOO_LONG,   /**< "line too long" */
+    STATUS_TABLE_FULL,      /**< "table full" */
+    STATUS_DUPLICATE,       /**< "name already used" */
+    STATUS_NOT_FOUND,       /**< "name not found" */
+    STATUS_TWO_DRIVERS,     /**< "net already has a driver" */
+    STATUS_SYNTAX,          /**< "syntax error" */
+    STATUS_UNKNOWN_KEYWORD, /**< "unknown keyword" */
     STATUS_COUNT            /**< number of codes, keep last */
 } Status_t;
 

@@ -16,7 +16,20 @@ const char *status_text(Status_t status)
         "null pointer argument",
         "argument out of range",
         "unknown gate type",
-        "wrong number of inputs for this gate type"
+        "wrong number of inputs for this gate type",
+        "too many words on the line",
+        "not a valid number",
+        "not a valid name",
+        "cannot open file",
+        "cannot read file",
+        "end of file",
+        "line too long",
+        "table full",
+        "name already used",
+        "name not found",
+        "net already has a driver",
+        "syntax error",
+        "unknown keyword"
     };
     const char *text = STATUS_UNKNOWN_TEXT;
 
