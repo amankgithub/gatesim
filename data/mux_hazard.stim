@@ -1,0 +1,7 @@
+# mux_hazard.stim : A = B = 1, S falls at 20 and rises at 40 (used by all three mux circuits)
+set A 1 @0
+set B 1 @0
+set S 1 @0
+set S 0 @20
+set S 1 @40
+end 60

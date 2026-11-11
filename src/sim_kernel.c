@@ -273,6 +273,7 @@ Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t en
         k->expand = NULL;
         k->listener.ctx = NULL;
         k->listener.on_change = NULL;
+        k->listener.on_end = NULL;
         k->has_listener = false;
         k->end_time = end_time;
         k->changed_count = 0U;
@@ -384,6 +385,10 @@ Status_t sk_run(SimKernel_t *k, SimResult_t *out_result)
             result.reason = reason;
             result.stop_time = (reason == STOP_END_TIME) ? k->end_time : last_time;
             result.events_applied = events_applied;
+            if (k->has_listener && (k->listener.on_end != NULL))
+            {
+                k->listener.on_end(k->listener.ctx, &result);
+            }
             *out_result = result;
         }
     }

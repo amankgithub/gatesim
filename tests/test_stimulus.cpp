@@ -141,22 +141,28 @@ TEST_F(StimClock, ParsesAndRejects)
     EXPECT_EQ(st.clock_count, 1U);
 
     ASSERT_EQ(Parse("clock K period 10 high 5 start 0"), STATUS_OK);
-    ASSERT_EQ(Parse("clock PRE_N period 10 high 5 start 0"), STATUS_OK);
-    ASSERT_EQ(Parse("clock CLR_N period 10 high 5 start 0"), STATUS_OK);
-    EXPECT_EQ(st.clock_count, MAX_CLOCKS);
+    EXPECT_EQ(st.clock_count, 2U);
+
+    LoadNet("data/adder4.net");
     ASSERT_EQ(st_init(&st), STATUS_OK);
-    for (const char *text : {"clock J period 10 high 5 start 0", "clock K period 10 high 5 start 0",
-                             "clock PRE_N period 10 high 5 start 0", "clock CLR_N period 10 high 5 start 0"})
+    for (const char *text : {"clock A3 period 10 high 5 start 0", "clock A2 period 10 high 5 start 0",
+                             "clock A1 period 10 high 5 start 0", "clock A0 period 10 high 5 start 0",
+                             "clock B3 period 10 high 5 start 0", "clock B2 period 10 high 5 start 0",
+                             "clock B1 period 10 high 5 start 0", "clock B0 period 10 high 5 start 0"})
     {
         ASSERT_EQ(Parse(text), STATUS_OK) << text;
     }
-    EXPECT_EQ(Parse("clock CLK period 10 high 5 start 0"), STATUS_TABLE_FULL);
+    EXPECT_EQ(st.clock_count, MAX_CLOCKS);
+    EXPECT_EQ(Parse("clock CIN period 10 high 5 start 0"), STATUS_TABLE_FULL);
 
+    uint16_t net = 0U;
     uint8_t clock = static_cast<uint8_t>(SENTINEL);
-    EXPECT_EQ(st_find_clock(&st, 1U, &clock), STATUS_OK);
+    ASSERT_EQ(nl_find_net(&nl, "A2", &net), STATUS_OK);
+    EXPECT_EQ(st_find_clock(&st, net, &clock), STATUS_OK);
     EXPECT_EQ(clock, 1U);
     clock = static_cast<uint8_t>(SENTINEL);
-    EXPECT_EQ(st_find_clock(&st, 2U, &clock), STATUS_NOT_FOUND);
+    ASSERT_EQ(nl_find_net(&nl, "CIN", &net), STATUS_OK);
+    EXPECT_EQ(st_find_clock(&st, net, &clock), STATUS_NOT_FOUND);
     EXPECT_EQ(clock, SENTINEL);
 }
 

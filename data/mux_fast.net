@@ -1,0 +1,7 @@
+# mux_fast.net : the same multiplexer with a fast inverter (the gap is swallowed, no glitch)
+input  A B S
+output F
+gate gi NOT #1  SN = S
+gate ga AND #2  T1 = A SN
+gate gb AND #2  T2 = B S
+gate go OR  #2  F  = T1 T2

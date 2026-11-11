@@ -1,0 +1,13 @@
+# counter_s3.stim : start the counter in state 3 (Q2 Q1 Q0 = 0 1 1), then 8 clock cycles
+# PRE and CLR are active low: PRE = 0 sets a flip-flop to 1, CLR = 0 clears it to 0; both released at 10
+clock CLK period 40 high 20 start 20
+set P2 1 @0
+set C2 0 @0
+set P1 0 @0
+set C1 1 @0
+set P0 0 @0
+set C0 1 @0
+set C2 1 @10
+set P1 1 @10
+set P0 1 @10
+end 360

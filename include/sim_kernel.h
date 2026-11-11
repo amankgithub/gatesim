@@ -42,10 +42,13 @@ typedef Status_t (*SkExpandFn_t)(const void *source, const Event_t *event, uint3
 typedef void (*SkOnChangeFn_t)(void *ctx, uint16_t net, uint32_t now, LogicValue_t old_value,
                                LogicValue_t new_value);
 
+typedef void (*SkOnEndFn_t)(void *ctx, const SimResult_t *result);
+
 typedef struct
 {
     void          *ctx;
     SkOnChangeFn_t on_change;
+    SkOnEndFn_t    on_end;
 } SkListener_t;
 
 typedef struct

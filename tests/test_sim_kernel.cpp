@@ -122,7 +122,7 @@ protected:
     /* Runs the whole simulation with the Recorder listener; the result goes to `result`. */
     void RunToEnd(uint32_t end_time)
     {
-        const SkListener_t recorder = {&changes, RecordChange};
+        const SkListener_t recorder = {&changes, RecordChange, nullptr};
 
         ASSERT_EQ(sk_init(&k, &nl, &queue, end_time), STATUS_OK);
         ASSERT_EQ(sk_set_source(&k, &st, st_expand), STATUS_OK);

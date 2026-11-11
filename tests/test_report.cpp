@@ -16,6 +16,7 @@
 namespace
 {
 const char *const RING_VCD_PATH = "build/test_ring5.vcd";
+const char *const JK_MS_VCD_PATH = "build/test_jk_ms.vcd";
 }
 
 TEST(VcdCode, OneAndTwoCharacterCodes)
@@ -50,6 +51,21 @@ protected:
     void TearDown() override
     {
         (void)std::remove(RING_VCD_PATH);
+        (void)std::remove(JK_MS_VCD_PATH);
+    }
+
+    /* The last "#time" line of a file's lines ("" if there is none). */
+    static std::string LastTimeLine(const std::vector<std::string> &lines)
+    {
+        std::string last_time;
+        for (const std::string &line : lines)
+        {
+            if ((!line.empty()) && (line[0] == '#'))
+            {
+                last_time = line;
+            }
+        }
+        return last_time;
     }
 
     /* Every line of a text file. */
@@ -94,7 +110,6 @@ TEST_F(Vcd, RingFileHeaderAndChanges)
     const std::vector<std::string> lines = ReadLines(RING_VCD_PATH);
     uint32_t var_lines = 0U;
     size_t dumpvars_end = 0U;
-    std::string last_time;
     for (size_t i = 0U; i < lines.size(); i++)
     {
         if (lines[i].rfind("$var wire 1 ", 0) == 0)
@@ -104,10 +119,6 @@ TEST_F(Vcd, RingFileHeaderAndChanges)
         if ((dumpvars_end == 0U) && (lines[i] == "$dumpvars"))
         {
             dumpvars_end = i + 1U + nl.net_count;
-        }
-        if ((!lines[i].empty()) && (lines[i][0] == '#'))
-        {
-            last_time = lines[i];
         }
     }
     EXPECT_EQ(var_lines, 6U);
@@ -124,5 +135,26 @@ TEST_F(Vcd, RingFileHeaderAndChanges)
     const std::vector<std::string> expected = {"0!", "#2", "1\"", "#4", "0#"};
     EXPECT_EQ(first_changes, expected);
 
-    EXPECT_EQ(last_time, "#100");
+    EXPECT_EQ(LastTimeLine(lines), "#100");
+
+    ASSERT_EQ(nl_load(&nl, "data/jk_ms.net", &diag), STATUS_OK) << diag.text;
+    ASSERT_EQ(st_load(&st, &nl, "data/jk_ms.stim", &diag), STATUS_OK) << diag.text;
+    char late_set[] = "set J 1 @100";
+    ASSERT_EQ(st_parse_line(&st, &nl, late_set, &diag), STATUS_OK) << diag.text;
+    ASSERT_EQ(eq_init(&queue), STATUS_OK);
+    ASSERT_EQ(st_seed(&st, &queue), STATUS_OK);
+    ASSERT_EQ(sk_init(&k, &nl, &queue, 95U), STATUS_OK);
+    ASSERT_EQ(sk_set_source(&k, &st, st_expand), STATUS_OK);
+    ASSERT_EQ(rw_vcd_open(&w, &nl, JK_MS_VCD_PATH), STATUS_OK);
+    ASSERT_EQ(rw_vcd_listener(&w, &listener), STATUS_OK);
+    ASSERT_EQ(sk_set_listener(&k, &listener), STATUS_OK);
+    ASSERT_EQ(sk_run(&k, &result), STATUS_OK);
+    ASSERT_EQ(rw_vcd_close(&w), STATUS_OK);
+    EXPECT_EQ(result.reason, STOP_END_TIME);
+    EXPECT_EQ(result.stop_time, 95U);
+
+    const std::vector<std::string> jk_lines = ReadLines(JK_MS_VCD_PATH);
+    ASSERT_FALSE(jk_lines.empty());
+    EXPECT_EQ(jk_lines.back(), "#95");
+    EXPECT_NE(std::find(jk_lines.begin(), jk_lines.end(), "#87"), jk_lines.end());
 }

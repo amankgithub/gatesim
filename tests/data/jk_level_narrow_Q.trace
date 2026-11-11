@@ -1,5 +1,5 @@
 # jk_level_narrow_Q.trace : data/jk_level.net + data/jk_level_narrow.stim
-# time value: every change of Q (from the reference model)
+# time value: every change of Q (from the reference model, verified against Icarus)
 2 1
 66 0
 68 1

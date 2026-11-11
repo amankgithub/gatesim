@@ -1,7 +1,7 @@
 # =============================================================================
 # Makefile - GateSim (C99 application + GoogleTest unit tests)
 #
-# Targets: all  run  test  clean  check
+# Targets: all  run  test  clean  check  crosscheck
 # =============================================================================
 
 # ---- Toolchain --------------------------------------------------------------
@@ -56,7 +56,7 @@ DEPS       := $(OBJ:.o=.d) $(TEST_OBJ:.o=.d)
 # demo: master-slave JK flip-flop from the library (race-around removed), waveform in output/waves.vcd
 ARGS       ?= data/jk_ms.net data/jk_ms.stim --out $(OUTPUT_DIR)
 
-.PHONY: all run test clean check
+.PHONY: all run test clean check crosscheck
 
 # ---- Main targets -----------------------------------------------------------
 all: $(APP_BIN)
@@ -76,6 +76,10 @@ check:
 	cppcheck --std=c99 --enable=warning,style,performance,portability \
 	         --addon=misra --inline-suppr --error-exitcode=1 \
 	         --suppress=missingIncludeSystem -q -I$(INC_DIR) $(SRC_DIR)
+
+# Every demo circuit in GateSim and in Icarus Verilog, waveforms compared (needs iverilog and python3)
+crosscheck: $(APP_BIN)
+	sh tools/crosscheck.sh $(APP_BIN)
 
 # ---- Link -------------------------------------------------------------------
 $(APP_BIN): $(OBJ)

@@ -1,0 +1,12 @@
+# adder4.stim : every pair (A, B), a new pair every 40 ns: each input bit is a clock with twice the
+# period of the bit below it, so A3 A2 A1 A0 counts 0..15 and B counts once per 16 values of A
+set CIN 0 @0
+clock A0 period 80 high 40 start 40
+clock A1 period 160 high 80 start 80
+clock A2 period 320 high 160 start 160
+clock A3 period 640 high 320 start 320
+clock B0 period 1280 high 640 start 640
+clock B1 period 2560 high 1280 start 1280
+clock B2 period 5120 high 2560 start 2560
+clock B3 period 10240 high 5120 start 5120
+end 10240

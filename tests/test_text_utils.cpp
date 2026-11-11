@@ -134,6 +134,10 @@ TEST(CheckName, RejectsBadNames)
 
     EXPECT_EQ(tu_check_name(""), STATUS_BAD_NAME);
     EXPECT_EQ(tu_check_name(too_long.c_str()), STATUS_BAD_NAME);
+    EXPECT_EQ(tu_check_name("a-b"), STATUS_BAD_NAME);
+    EXPECT_EQ(tu_check_name("a=b"), STATUS_BAD_NAME);
+    EXPECT_EQ(tu_check_name("2a"), STATUS_BAD_NAME);
+    EXPECT_EQ(tu_check_name(".a"), STATUS_BAD_NAME);
 }
 
 TEST(ReadLine, ReadsLinesAndCountsThem)

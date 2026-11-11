@@ -1,0 +1,7 @@
+# mux_hazard.net : 2:1 multiplexer F = A.S' + B.S with a slow inverter (static-1 hazard)
+input  A B S
+output F
+gate gi NOT #3  SN = S
+gate ga AND #2  T1 = A SN
+gate gb AND #2  T2 = B S
+gate go OR  #2  F  = T1 T2

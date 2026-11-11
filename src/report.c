@@ -99,6 +99,24 @@ static void vcd_on_change(void *ctx, uint16_t net, uint32_t now, LogicValue_t ol
     }
 }
 
+/* Kernel listener: writes "#stop_time" at the end of a run when it is later than the last time written */
+static void vcd_on_end(void *ctx, const SimResult_t *result)
+{
+    VcdWriter_t *const w = (VcdWriter_t *)ctx;
+
+    if ((w != NULL) && (result != NULL) && (w->fp != NULL) && !w->failed && (result->stop_time > w->last_time))
+    {
+        if (fprintf(w->fp, "#%" PRIu32 "\n", result->stop_time) < 0)
+        {
+            w->failed = true;
+        }
+        else
+        {
+            w->last_time = result->stop_time;
+        }
+    }
+}
+
 Status_t rw_vcd_code(uint16_t net, char *out, uint32_t out_size)
 {
     Status_t status = STATUS_OK;
@@ -165,6 +183,7 @@ Status_t rw_vcd_listener(VcdWriter_t *w, SkListener_t *out_listener)
     {
         out_listener->ctx = w;
         out_listener->on_change = vcd_on_change;
+        out_listener->on_end = vcd_on_end;
         status = STATUS_OK;
     }
     return status;

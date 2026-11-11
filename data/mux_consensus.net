@@ -1,0 +1,8 @@
+# mux_consensus.net : the same multiplexer plus the consensus term A.B (K-map fix, no glitch)
+input  A B S
+output F
+gate gi NOT #3  SN = S
+gate ga AND #2  T1 = A SN
+gate gb AND #2  T2 = B S
+gate gc AND #2  T3 = A B
+gate go OR  #2  F  = T1 T2 T3

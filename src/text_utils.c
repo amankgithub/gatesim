@@ -21,6 +21,18 @@ static bool is_digit(char c)
     return ((c >= '0') && (c <= '9'));
 }
 
+/* Tells whether a character may start a name: a letter or '_' (as in a Verilog identifier). */
+static bool is_name_start(char c)
+{
+    return (((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z')) || (c == '_'));
+}
+
+/* Tells whether a character may follow in a name: a letter, a digit, '_' or '.' */
+static bool is_name_char(char c)
+{
+    return (is_name_start(c) || is_digit(c) || (c == '.'));
+}
+
 /* Counts the words of a line without changing it. */
 static uint32_t count_words(const char *line)
 {
@@ -181,12 +193,17 @@ Status_t tu_check_name(const char *name)
     else
     {
         uint32_t length = 0U;
+        bool valid = is_name_start(name[0]);
 
         while ((length < MAX_NAME_LEN) && (name[length] != '\0'))
         {
+            if ((length > 0U) && !is_name_char(name[length]))
+            {
+                valid = false;
+            }
             length++;
         }
-        if ((length == 0U) || (length >= MAX_NAME_LEN))
+        if (!valid || (length >= MAX_NAME_LEN))
         {
             status = STATUS_BAD_NAME;
         }

@@ -1,0 +1,5 @@
+# mod6_ripple.stim : reset until 15, then 8 clock cycles; the flip-flops act on the falling edge
+clock CLK period 40 high 20 start 20
+set RST_N 0 @0
+set RST_N 1 @15
+end 340

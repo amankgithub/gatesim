@@ -36,7 +36,7 @@ Status_t tu_split_words(char *line, char *words[], uint32_t max_words, uint32_t 
 /* Converts a decimal number with a range check (instead of atoi, MISRA 21.7). */
 Status_t tu_parse_u32(const char *text, uint32_t min_value, uint32_t max_value, uint32_t *out_value);
 
-/* Checks the length of a name: 1..MAX_NAME_LEN-1 characters. */
+/* Checks a name: 1..MAX_NAME_LEN-1 characters, the first a letter or '_', the others letters, digits, '_' or '.' */
 Status_t tu_check_name(const char *name);
 
 /* Copies a text into a buffer of known size (bounded, never strcpy). */

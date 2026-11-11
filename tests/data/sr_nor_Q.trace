@@ -1,5 +1,5 @@
 # sr_nor_Q.trace : data/sr_nor.net + data/sr_nor.stim
-# time value: every change of Q (from the reference model)
+# time value: every change of Q (from the reference model, verified against Icarus)
 2 0
 24 1
 42 0

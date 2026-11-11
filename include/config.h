@@ -22,7 +22,7 @@
 #define MAX_EVENTS          1024U
 
 #define MAX_SET_LINES       256U
-#define MAX_CLOCKS          4U
+#define MAX_CLOCKS          8U
 #define MIN_CLOCK_PERIOD    2U
 
 #define VCD_FIRST_CODE      33U
