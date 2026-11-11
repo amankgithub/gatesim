@@ -13,6 +13,7 @@ SRC_DIR    := src
 INC_DIR    := include
 TEST_DIR   := tests
 BUILD_DIR  := build
+OUTPUT_DIR := output
 TARGET     := gatesim
 
 APP_BIN    := $(BUILD_DIR)/$(TARGET)
@@ -52,8 +53,8 @@ TEST_OBJ   := $(patsubst $(SRC_DIR)/%.c,$(TEST_BUILD)/src/%.o,$(LIB_SRC)) \
 DEPS       := $(OBJ:.o=.d) $(TEST_OBJ:.o=.d)
 
 # Arguments of the program for make run (override: make run ARGS="...")
-# demo: one inverter, pulses of width 1-4 ns
-ARGS       ?= data/inv_pulse.net data/inv_pulse.stim
+# demo: ring oscillator, waveform in output/waves.vcd
+ARGS       ?= data/ring5.net data/ring5.stim --out $(OUTPUT_DIR)
 
 .PHONY: all run test clean check
 
@@ -61,13 +62,14 @@ ARGS       ?= data/inv_pulse.net data/inv_pulse.stim
 all: $(APP_BIN)
 
 run: $(APP_BIN)
+	@mkdir -p $(OUTPUT_DIR)
 	./$(APP_BIN) $(ARGS)
 
 test: $(TEST_BIN)
 	./$(TEST_BIN)
 
 clean:
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD_DIR) $(OUTPUT_DIR)
 
 # Static analysis with the cppcheck MISRA C:2012 addon (needs cppcheck installed)
 check:

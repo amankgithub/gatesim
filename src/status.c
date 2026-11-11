@@ -34,7 +34,9 @@ const char *status_text(Status_t status)
         "event list empty",
         "time overflow",
         "net is not an input",
-        "missing end line"
+        "missing end line",
+        "net is read but never driven",
+        "cannot write file"
     };
     const char *text = STATUS_UNKNOWN_TEXT;
 

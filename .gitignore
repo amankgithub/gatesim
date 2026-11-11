@@ -1,2 +1,5 @@
 # Build output (make all / make test)
 build/
+
+# Program output (waveform files written by make run)
+output/

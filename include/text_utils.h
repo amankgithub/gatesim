@@ -44,6 +44,9 @@ Status_t tu_copy_text(char *dst, uint32_t dst_size, const char *src);
 /* Fills an error message: text = what, or what + " '" + name + "'". */
 Status_t tu_set_diag(Diag_t *diag, const char *file, uint32_t line, const char *what, const char *name);
 
+/* Builds the path of a file in a folder: dir + "/" + file_name ("output/waves.vcd"). */
+Status_t tu_join_dir(const char *dir, const char *file_name, char *out, uint32_t out_size);
+
 #ifdef __cplusplus
 }
 #endif

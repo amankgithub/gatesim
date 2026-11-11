@@ -1,0 +1,4 @@
+# bad_undriven.net : net b is read by g1 but nothing drives it
+input  a
+output y
+gate g1 NAND #2  y = a b

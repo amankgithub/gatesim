@@ -24,7 +24,19 @@ struct SetEvent
     uint32_t     time;
 };
 
-constexpr uint32_t MAX_TEST_STEPS = 10000U;
+struct Reported
+{
+    uint16_t     net;
+    uint32_t     time;
+    LogicValue_t old_value;
+    LogicValue_t new_value;
+};
+
+/* The listener of the tests: on_change appends to the vector given as ctx. */
+void RecordChange(void *ctx, uint16_t net, uint32_t now, LogicValue_t old_value, LogicValue_t new_value)
+{
+    static_cast<std::vector<Reported> *>(ctx)->push_back({net, now, old_value, new_value});
+}
 
 /* Reads a trace file: lines starting with '#' and empty lines are skipped */
 std::vector<Change> ReadTrace(const char *path)
@@ -61,7 +73,8 @@ protected:
     static EventQueue_t queue;
     static SimKernel_t k;
     static Stimulus_t st;
-    std::vector<std::pair<uint16_t, Change>> changes;
+    std::vector<Reported> changes;
+    SimResult_t result = {};
 
     /* Loads a netlist and empties the event list. */
     void Load(const char *path)
@@ -106,31 +119,15 @@ protected:
         }
     }
 
-    /* Runs to the end; after each step that did not stop the run, records the changed nets. */
+    /* Runs the whole simulation with the Recorder listener; the result goes to `result`. */
     void RunToEnd(uint32_t end_time)
     {
-        bool done = false;
-        uint32_t steps = 0U;
+        const SkListener_t recorder = {&changes, RecordChange};
 
         ASSERT_EQ(sk_init(&k, &nl, &queue, end_time), STATUS_OK);
-        while (!done && (steps < MAX_TEST_STEPS))
-        {
-            ASSERT_EQ(sk_step(&k, &done), STATUS_OK);
-            if (!done)
-            {
-                for (uint32_t i = 0U; i < k.changed_count; i++)
-                {
-                    const uint16_t net = k.changed[i];
-                    changes.push_back({net, {k.now, nl.nets[net].value}});
-                }
-            }
-            else
-            {
-                EXPECT_EQ(k.changed_count, 0U);
-            }
-            steps++;
-        }
-        ASSERT_TRUE(done) << "run did not stop";
+        ASSERT_EQ(sk_set_listener(&k, &recorder), STATUS_OK);
+        ASSERT_EQ(sk_run(&k, &result), STATUS_OK);
+        EXPECT_EQ(k.changed_count, 0U);
     }
 
     /* Every recorded change of one net, in order. */
@@ -139,11 +136,11 @@ protected:
         std::vector<Change> out;
         uint16_t net = 0U;
         EXPECT_EQ(nl_find_net(&nl, name, &net), STATUS_OK) << name;
-        for (const auto &c : changes)
+        for (const Reported &c : changes)
         {
-            if (c.first == net)
+            if (c.net == net)
             {
-                out.push_back(c.second);
+                out.push_back({c.time, c.new_value});
             }
         }
         return out;
@@ -163,8 +160,13 @@ TEST_F(Kernel, InertialExampleMatchesTrace)
 
     const std::vector<Change> expected = {{3U, LV_0}, {33U, LV_1}, {37U, LV_0}};
     EXPECT_EQ(ChangesOf("Y"), expected);
-    EXPECT_EQ(k.reason, STOP_QUEUE_EMPTY);
-    EXPECT_EQ(k.now, 37U);
+    EXPECT_EQ(result.reason, STOP_QUEUE_EMPTY);
+    EXPECT_EQ(result.stop_time, 37U);
+
+    ASSERT_FALSE(changes.empty());
+    EXPECT_EQ(changes[0].time, 0U);
+    EXPECT_EQ(changes[0].old_value, LV_X);
+    EXPECT_EQ(changes[0].new_value, LV_1);
 }
 
 TEST_F(Kernel, PulsesNarrowerThanDelaySwallowed)
@@ -173,9 +175,9 @@ TEST_F(Kernel, PulsesNarrowerThanDelaySwallowed)
     RunToEnd(Seed("data/inv_pulse.stim"));
 
     EXPECT_EQ(ChangesOf("Y"), ReadTrace("tests/data/inv_pulse_Y.trace"));
-    EXPECT_EQ(k.reason, STOP_QUEUE_EMPTY);
-    EXPECT_EQ(k.now, 47U);
-    EXPECT_EQ(k.events_applied, 14U);
+    EXPECT_EQ(result.reason, STOP_QUEUE_EMPTY);
+    EXPECT_EQ(result.stop_time, 47U);
+    EXPECT_EQ(result.events_applied, 14U);
 }
 
 TEST_F(Kernel, RiseFallDelaysShapePulse)
@@ -185,8 +187,8 @@ TEST_F(Kernel, RiseFallDelaysShapePulse)
 
     const std::vector<Change> expected = {{2U, LV_1}, {35U, LV_0}, {38U, LV_1}};
     EXPECT_EQ(ChangesOf("Y"), expected);
-    EXPECT_EQ(k.reason, STOP_QUEUE_EMPTY);
-    EXPECT_EQ(k.events_applied, 10U);
+    EXPECT_EQ(result.reason, STOP_QUEUE_EMPTY);
+    EXPECT_EQ(result.events_applied, 10U);
 
     const Gate_t &g = nl.gates[0];
     uint16_t delay = 0U;
@@ -204,7 +206,8 @@ TEST_F(Kernel, SrLatchMatchesTrace)
     RunToEnd(Seed("data/sr_nor.stim"));
 
     EXPECT_EQ(ChangesOf("Q"), ReadTrace("tests/data/sr_nor_Q.trace"));
-    EXPECT_EQ(k.reason, STOP_END_TIME);
+    EXPECT_EQ(result.reason, STOP_END_TIME);
+    EXPECT_EQ(result.stop_time, 80U);
 }
 
 TEST_F(Kernel, SkewedReleaseSettlesInReset)
@@ -218,8 +221,8 @@ TEST_F(Kernel, SkewedReleaseSettlesInReset)
     ASSERT_FALSE(qn.empty());
     EXPECT_EQ(q.back(), Change(42U, LV_0));
     EXPECT_EQ(qn.back(), Change(52U, LV_1));
-    EXPECT_EQ(k.reason, STOP_QUEUE_EMPTY);
-    EXPECT_EQ(k.now, 52U);
+    EXPECT_EQ(result.reason, STOP_QUEUE_EMPTY);
+    EXPECT_EQ(result.stop_time, 52U);
 }
 
 TEST_F(Kernel, RingPeriodIsTwenty)
@@ -237,7 +240,9 @@ TEST_F(Kernel, RingPeriodIsTwenty)
     }
     const std::vector<uint32_t> expected = {22U, 42U, 62U, 82U};
     EXPECT_EQ(rises, expected);
-    EXPECT_EQ(k.reason, STOP_END_TIME);
+    EXPECT_EQ(result.reason, STOP_END_TIME);
+    EXPECT_EQ(result.stop_time, 100U);
+    EXPECT_EQ(result.events_applied, 52U);
 }
 
 TEST_F(Kernel, RaceAroundPeriodEight)
@@ -256,5 +261,5 @@ TEST_F(Kernel, RaceAroundPeriodEight)
     }
     const std::vector<Change> expected = {{24U, LV_1}, {30U, LV_0}, {32U, LV_1}, {38U, LV_0}, {40U, LV_1}};
     EXPECT_EQ(after_rise, expected);
-    EXPECT_EQ(k.reason, STOP_QUEUE_EMPTY);
+    EXPECT_EQ(result.reason, STOP_QUEUE_EMPTY);
 }

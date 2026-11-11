@@ -1,0 +1,5 @@
+# warn_unused.net : g2 drives t, which nobody reads and is not an output (one warning)
+input  a
+output y
+gate g1 NOT #1  y = a
+gate g2 BUF #1  t = a

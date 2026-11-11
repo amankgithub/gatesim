@@ -12,6 +12,20 @@ typedef struct
     GateType_t  type;
 } GateTypeName_t;
 
+#define UNKNOWN_TYPE_NAME   "?"
+
+static const GateTypeName_t TYPE_NAMES[GT_COUNT] =
+{
+    { "AND",  GT_AND  },
+    { "OR",   GT_OR   },
+    { "NAND", GT_NAND },
+    { "NOR",  GT_NOR  },
+    { "XOR",  GT_XOR  },
+    { "XNOR", GT_XNOR },
+    { "NOT",  GT_NOT  },
+    { "BUF",  GT_BUF  }
+};
+
 /* Tells whether every input value is LV_0, LV_1 or LV_X. */
 static bool values_are_valid(const LogicValue_t inputs[], uint32_t count)
 {
@@ -148,17 +162,6 @@ Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, L
 
 Status_t lg_type_from_name(const char *name, GateType_t *out_type)
 {
-    static const GateTypeName_t TYPE_NAMES[GT_COUNT] =
-    {
-        { "AND",  GT_AND  },
-        { "OR",   GT_OR   },
-        { "NAND", GT_NAND },
-        { "NOR",  GT_NOR  },
-        { "XOR",  GT_XOR  },
-        { "XNOR", GT_XNOR },
-        { "NOT",  GT_NOT  },
-        { "BUF",  GT_BUF  }
-    };
     Status_t status = STATUS_UNKNOWN_TYPE;
 
     if ((name == NULL) || (out_type == NULL))
@@ -180,6 +183,17 @@ Status_t lg_type_from_name(const char *name, GateType_t *out_type)
         }
     }
     return status;
+}
+
+const char *lg_type_name(GateType_t type)
+{
+    const char *name = UNKNOWN_TYPE_NAME;
+
+    if (type < GT_COUNT)
+    {
+        name = TYPE_NAMES[type].name;
+    }
+    return name;
 }
 
 Status_t lg_value_from_text(const char *text, LogicValue_t *out_value)

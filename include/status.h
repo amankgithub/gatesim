@@ -42,6 +42,8 @@ typedef enum
     STATUS_TIME_OVERFLOW,   /**< "time overflow" */
     STATUS_NOT_INPUT,       /**< "net is not an input" */
     STATUS_NO_END,          /**< "missing end line" */
+    STATUS_UNDRIVEN,        /**< "net is read but never driven" */
+    STATUS_FILE_WRITE,      /**< "cannot write file" */
     STATUS_COUNT            /**< number of codes, keep last */
 } Status_t;
 

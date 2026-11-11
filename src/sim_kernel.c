@@ -57,8 +57,8 @@ static Status_t apply_event(SimKernel_t *k, const Event_t *event)
     return status;
 }
 
-/* Takes every event of time k->now from the list and applies it. */
-static Status_t apply_events_of_now(SimKernel_t *k)
+/* Takes every event of time now from the list and applies it. */
+static Status_t apply_events_of_now(SimKernel_t *k, uint32_t now, uint32_t *events_applied)
 {
     Status_t status = STATUS_OK;
     bool running = true;
@@ -67,7 +67,7 @@ static Status_t apply_events_of_now(SimKernel_t *k)
     {
         uint16_t row = 0U;
 
-        if ((eq_find_earliest(k->queue, &row) != STATUS_OK) || (k->queue->rows[row].time != k->now))
+        if ((eq_find_earliest(k->queue, &row) != STATUS_OK) || (k->queue->rows[row].time != now))
         {
             running = false;
         }
@@ -78,7 +78,7 @@ static Status_t apply_events_of_now(SimKernel_t *k)
             status = eq_remove(k->queue, row, &event);
             if (status == STATUS_OK)
             {
-                k->events_applied++;
+                (*events_applied)++;
                 status = apply_event(k, &event);
             }
         }
@@ -140,7 +140,7 @@ static Status_t cancel_pending(SimKernel_t *k, uint16_t gate)
 }
 
 /* Re-calculates one gate and applies the three rules of inertial delay. */
-static Status_t evaluate_gate(SimKernel_t *k, uint16_t gate)
+static Status_t evaluate_gate(SimKernel_t *k, uint16_t gate, uint32_t now)
 {
     Gate_t *g = &k->nl->gates[gate];
     LogicValue_t inputs[MAX_GATE_INPUTS];
@@ -163,13 +163,13 @@ static Status_t evaluate_gate(SimKernel_t *k, uint16_t gate)
         {
             const uint32_t delay = (uint32_t)gate_delay(g, value);
 
-            if (k->now > (MAX_TIME_NS - delay))
+            if (now > (MAX_TIME_NS - delay))
             {
                 status = STATUS_TIME_OVERFLOW;
             }
             else
             {
-                status = eq_add(k->queue, k->now + delay, EV_GATE, gate, value);
+                status = eq_add(k->queue, now + delay, EV_GATE, gate, value);
                 if (status == STATUS_OK)
                 {
                     g->has_pending = true;
@@ -182,41 +182,39 @@ static Status_t evaluate_gate(SimKernel_t *k, uint16_t gate)
 }
 
 /* Re-calculates every gate on the first step, later only the gates with a changed input. */
-static Status_t evaluate_gates(SimKernel_t *k)
+static Status_t evaluate_gates(SimKernel_t *k, uint32_t now, bool first)
 {
     Status_t status = STATUS_OK;
     uint32_t g = 0U;
 
     while ((status == STATUS_OK) && (g < (uint32_t)k->nl->gate_count))
     {
-        if (k->first || has_changed_input(k, &k->nl->gates[g]))
+        if (first || has_changed_input(k, &k->nl->gates[g]))
         {
-            status = evaluate_gate(k, (uint16_t)g);
+            status = evaluate_gate(k, (uint16_t)g, now);
         }
         g++;
     }
     return status;
 }
 
-/* Keeps in changed[] only the nets whose value differs from the start of the step */
-static void keep_real_changes(SimKernel_t *k)
+/* Tells the listener about every net whose value differs from the start of the step */
+static void report_changes(SimKernel_t *k, uint32_t now)
 {
-    uint32_t kept = 0U;
     uint32_t i;
 
     for (i = 0U; i < (uint32_t)k->changed_count; i++)
     {
         const uint16_t net = k->changed[i];
+        const LogicValue_t value = k->nl->nets[net].value;
 
         k->changed_flag[net] = false;
-        if (k->nl->nets[net].value != k->old_value[i])
+        if ((value != k->old_value[i]) && k->has_listener && (k->listener.on_change != NULL))
         {
-            k->changed[kept] = net;
-            k->old_value[kept] = k->old_value[i];
-            kept++;
+            k->listener.on_change(k->listener.ctx, net, now, k->old_value[i], value);
         }
     }
-    k->changed_count = (uint16_t)kept;
+    k->changed_count = 0U;
 }
 
 Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t end_time)
@@ -249,12 +247,10 @@ Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t en
         }
         k->nl = nl;
         k->queue = queue;
+        k->listener.ctx = NULL;
+        k->listener.on_change = NULL;
+        k->has_listener = false;
         k->end_time = end_time;
-        k->first = true;
-        k->done = false;
-        k->reason = STOP_QUEUE_EMPTY;
-        k->now = 0U;
-        k->events_applied = 0U;
         k->changed_count = 0U;
     }
     return status;
@@ -279,55 +275,79 @@ Status_t sk_gate_delay(const Gate_t *gate, LogicValue_t new_value, uint16_t *out
     return status;
 }
 
-Status_t sk_step(SimKernel_t *k, bool *out_done)
+Status_t sk_set_listener(SimKernel_t *k, const SkListener_t *listener)
+{
+    Status_t status = STATUS_NULL_ARG;
+
+    if ((k != NULL) && (listener != NULL))
+    {
+        k->listener = *listener;
+        k->has_listener = true;
+        status = STATUS_OK;
+    }
+    return status;
+}
+
+Status_t sk_run(SimKernel_t *k, SimResult_t *out_result)
 {
     Status_t status = STATUS_OK;
 
-    if ((k == NULL) || (out_done == NULL))
+    if ((k == NULL) || (out_result == NULL))
     {
         status = STATUS_NULL_ARG;
     }
-    else if (k->done)
-    {
-        status = STATUS_BAD_ARG;
-    }
     else
     {
-        uint16_t row = 0U;
-        const Status_t found = eq_find_earliest(k->queue, &row);
+        StopReason_t reason = STOP_QUEUE_EMPTY;
+        uint32_t events_applied = 0U;
+        uint32_t last_time = 0U;
+        bool first = true;
+        bool running = true;
 
-        k->changed_count = 0U;
-        if (found == STATUS_QUEUE_EMPTY)
+        while ((status == STATUS_OK) && running)
         {
-            k->done = true;
-            k->reason = STOP_QUEUE_EMPTY;
-        }
-        else if (found != STATUS_OK)
-        {
-            status = found;
-        }
-        else if (k->queue->rows[row].time > k->end_time)
-        {
-            k->done = true;
-            k->reason = STOP_END_TIME;
-        }
-        else
-        {
-            k->now = k->queue->rows[row].time;
-            status = apply_events_of_now(k);
-            if (status == STATUS_OK)
+            uint16_t row = 0U;
+            const Status_t found = eq_find_earliest(k->queue, &row);
+
+            if (found == STATUS_QUEUE_EMPTY)
             {
-                status = evaluate_gates(k);
+                reason = STOP_QUEUE_EMPTY;
+                running = false;
             }
-            if (status == STATUS_OK)
+            else if (found != STATUS_OK)
             {
-                keep_real_changes(k);
-                k->first = false;
+                status = found;
+            }
+            else if (k->queue->rows[row].time > k->end_time)
+            {
+                reason = STOP_END_TIME;
+                running = false;
+            }
+            else
+            {
+                const uint32_t now = k->queue->rows[row].time;
+
+                status = apply_events_of_now(k, now, &events_applied);
+                if (status == STATUS_OK)
+                {
+                    status = evaluate_gates(k, now, first);
+                }
+                if (status == STATUS_OK)
+                {
+                    report_changes(k, now);
+                    first = false;
+                    last_time = now;
+                }
             }
         }
         if (status == STATUS_OK)
         {
-            *out_done = k->done;
+            SimResult_t result;
+
+            result.reason = reason;
+            result.stop_time = (reason == STOP_END_TIME) ? k->end_time : last_time;
+            result.events_applied = events_applied;
+            *out_result = result;
         }
     }
     return status;

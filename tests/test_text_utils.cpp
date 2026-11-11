@@ -218,3 +218,17 @@ TEST(SetDiag, FormatsWhatAndName)
     EXPECT_EQ(tu_set_diag(&diag, "x.net", 4U, "not a valid name", long_name.c_str()), STATUS_BAD_ARG);
     EXPECT_STREQ(diag.text, "missing end line");
 }
+
+TEST(JoinDir, AddsSlash)
+{
+    char path[MAX_PATH_LEN] = "unchanged";
+
+    ASSERT_EQ(tu_join_dir("output", "waves.vcd", path, MAX_PATH_LEN), STATUS_OK);
+    EXPECT_STREQ(path, "output/waves.vcd");
+
+    char small[16] = "unchanged";
+    EXPECT_EQ(tu_join_dir("output", "waves.vcd", small, sizeof(small)), STATUS_BAD_ARG);
+    EXPECT_STREQ(small, "unchanged");
+    EXPECT_EQ(tu_join_dir("", "waves.vcd", path, MAX_PATH_LEN), STATUS_BAD_ARG);
+    EXPECT_STREQ(path, "output/waves.vcd");
+}

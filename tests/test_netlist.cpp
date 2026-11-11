@@ -84,6 +84,9 @@ class ParseLine : public NetlistTest
 class LoadNetlist : public NetlistTest
 {
 };
+class CheckNetlist : public NetlistTest
+{
+};
 
 TEST_F(FindOrAdd, ReturnsExistingIndex)
 {
@@ -210,15 +213,21 @@ TEST_F(GateLine, RejectsUnknownTypeAndBadCounts)
     EXPECT_EQ(nl.gate_count, 0U);
 }
 
-TEST_F(GateLine, RejectsSecondDriver)
+TEST_F(GateLine, RejectsDuplicateNameAndSecondDriver)
 {
     LoadSrLatch();
+    EXPECT_EQ(Parse("gate n1 NOT #1 T = S"), STATUS_DUPLICATE);
+    EXPECT_STREQ(diag.text, "name already used 'n1'");
     EXPECT_EQ(Parse("gate n3 NOT #1 Q = S"), STATUS_TWO_DRIVERS);
     EXPECT_EQ(Parse("gate n4 NOT #1 S = R"), STATUS_TWO_DRIVERS);
     EXPECT_EQ(Parse("input T Q"), STATUS_TWO_DRIVERS);
     EXPECT_EQ(Parse("input T S"), STATUS_DUPLICATE);
+    EXPECT_EQ(Parse("output T Q"), STATUS_DUPLICATE);
+    EXPECT_EQ(Parse("output T T"), STATUS_DUPLICATE);
     EXPECT_EQ(nl.net_count, 4U);
     EXPECT_EQ(nl.gate_count, 2U);
+    EXPECT_EQ(nl.input_count, 2U);
+    EXPECT_EQ(nl.output_count, 2U);
 }
 
 TEST_F(ParseLine, SrLatchTablesAsExpected)
@@ -256,6 +265,9 @@ TEST_F(LoadNetlist, Ring5FromFile)
     EXPECT_EQ(diag.line, SENTINEL);
     EXPECT_EQ(nl.gate_count, 5U);
     EXPECT_EQ(nl.net_count, 6U);
+    EXPECT_EQ(nl.input_count, 1U);
+    EXPECT_EQ(nl.output_count, 5U);
+    EXPECT_EQ(nl.warning_count, 0U);
     EXPECT_EQ(NetName(0U), "EN");
     EXPECT_EQ(nl.gates[0].type, GT_NAND);
 }
@@ -272,4 +284,19 @@ TEST_F(LoadNetlist, ErrorHasFileAndLine)
     EXPECT_STREQ(diag.file, "tests/data/no_such_file.net");
     EXPECT_EQ(diag.line, 0U);
     EXPECT_STREQ(diag.text, "cannot open file");
+}
+
+TEST_F(CheckNetlist, RejectsUndrivenNet)
+{
+    EXPECT_EQ(nl_load(&nl, "tests/data/bad_undriven.net", &diag), STATUS_UNDRIVEN);
+    EXPECT_STREQ(diag.file, "tests/data/bad_undriven.net");
+    EXPECT_EQ(diag.line, 0U);
+    EXPECT_NE(std::string(diag.text).find("'b'"), std::string::npos) << diag.text;
+}
+
+TEST_F(CheckNetlist, WarnsUnusedGateOutput)
+{
+    ASSERT_EQ(nl_load(&nl, "tests/data/warn_unused.net", &diag), STATUS_OK) << diag.text;
+    ASSERT_EQ(nl.warning_count, 1U);
+    EXPECT_EQ(NetName(nl.unused[0]), "t");
 }

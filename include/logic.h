@@ -38,6 +38,9 @@ Status_t lg_check_input_count(GateType_t type, uint32_t count);
 /* Finds the gate type of a name from a netlist file. */
 Status_t lg_type_from_name(const char *name, GateType_t *out_type);
 
+/* Gives the name of a gate type, as written in a netlist file. */
+const char *lg_type_name(GateType_t type);
+
 /* Reads a logic value written in a stimulus file. */
 Status_t lg_value_from_text(const char *text, LogicValue_t *out_value);
 

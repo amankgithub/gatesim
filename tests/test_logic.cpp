@@ -123,6 +123,15 @@ TEST(LogicType, ParsesNamesAndRejectsUnknown)
     EXPECT_EQ(lg_type_from_name("nand", &type), STATUS_UNKNOWN_TYPE);
     EXPECT_EQ(lg_type_from_name("", &type), STATUS_UNKNOWN_TYPE);
     EXPECT_EQ(type, GT_OR);
+
+    for (int t = 0; t < static_cast<int>(GT_COUNT); t++)
+    {
+        const char *name = lg_type_name(static_cast<GateType_t>(t));
+        ASSERT_EQ(lg_type_from_name(name, &type), STATUS_OK) << name;
+        EXPECT_EQ(type, static_cast<GateType_t>(t));
+    }
+    EXPECT_STREQ(lg_type_name(GT_NOR), "NOR");
+    EXPECT_STREQ(lg_type_name(GT_COUNT), "?");
 }
 
 TEST(LogicXor, MatchesTruthTable)

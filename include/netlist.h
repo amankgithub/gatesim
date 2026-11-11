@@ -24,6 +24,7 @@ typedef struct
     char         name[MAX_NAME_LEN];
     DriverKind_t driver;
     bool         is_output;
+    bool         is_read;
     LogicValue_t value;
 } Net_t;
 
@@ -57,6 +58,10 @@ typedef struct
     uint16_t net_count;
     Gate_t   gates[MAX_GATES];
     uint16_t gate_count;
+    uint16_t input_count;
+    uint16_t output_count;
+    uint16_t unused[MAX_WARNINGS];
+    uint16_t warning_count;
 } Netlist_t;
 
 /* Empties both tables. */
@@ -65,10 +70,13 @@ Status_t nl_init(Netlist_t *nl);
 /* Finds a net by name (linear search). */
 Status_t nl_find_net(const Netlist_t *nl, const char *name, uint16_t *out_index);
 
+/* Finds a gate by name (linear search). */
+Status_t nl_find_gate(const Netlist_t *nl, const char *name, uint16_t *out_index);
+
 /* Finds a net by name, or adds it at the end. A new net has no driver and the value X. */
 Status_t nl_find_or_add_net(Netlist_t *nl, const char *name, uint16_t *out_index);
 
-/* Declares one input net (found or added). */
+/* Declares one input net (found or added) and counts it in input_count. */
 Status_t nl_add_input(Netlist_t *nl, const char *name);
 
 /* Reads a delay word: "#d" (the same delay both ways) or "#r,f" (rise r, fall f). */
@@ -77,13 +85,13 @@ Status_t nl_parse_delay(const char *word, uint16_t *out_rise, uint16_t *out_fall
 /* Checks the words of a gate line and fills a GateSpec_t. */
 Status_t nl_parse_gate_words(char *const words[], uint32_t count, GateSpec_t *out_spec);
 
-/* Adds one gate: its output and input nets are found or added. */
+/* Adds one gate: its output and input nets are found or added, the inputs are marked as read. */
 Status_t nl_add_gate(Netlist_t *nl, const GateSpec_t *spec);
 
 /* Handles one line of a .net file: input, output or gate. */
 Status_t nl_parse_line(Netlist_t *nl, char *line, Diag_t *out_diag);
 
-/* Reads a whole .net file into the tables (they are emptied first). */
+/* Reads a whole .net file into the tables (they are emptied first), then checks the whole circuit. */
 Status_t nl_load(Netlist_t *nl, const char *path, Diag_t *out_diag);
 
 #ifdef __cplusplus

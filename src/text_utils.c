@@ -363,3 +363,27 @@ Status_t tu_close(LineReader_t *reader)
     }
     return status;
 }
+
+Status_t tu_join_dir(const char *dir, const char *file_name, char *out, uint32_t out_size)
+{
+    Status_t status = STATUS_OK;
+
+    if ((dir == NULL) || (file_name == NULL) || (out == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else if ((dir[0] == '\0') || ((strlen(dir) + 1U + strlen(file_name)) >= (size_t)out_size))
+    {
+        status = STATUS_BAD_ARG;
+    }
+    else
+    {
+        const int written = snprintf(out, (size_t)out_size, "%s/%s", dir, file_name);
+
+        if ((written < 0) || ((uint32_t)written >= out_size))
+        {
+            status = STATUS_BAD_ARG;
+        }
+    }
+    return status;
+}
