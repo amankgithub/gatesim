@@ -2,11 +2,12 @@
  * @file    main.c
  * @brief   Entry point of GateSim: the command line and the high-level flow only.
  * @details `gatesim <netlist.net> <stimulus.stim> [--out <dir>]`: load both files, run the
- *          simulation with the VCD writer as the kernel's listener (<dir>/waves.vcd), then print
- *          why and when the run stopped and where the waveform is. `gatesim --check-only
- *          <netlist.net>`: load and check the netlist and print a summary. `gatesim --help`: the
- *          usage text. Errors go to stderr as "gatesim: file:line: text 'word'". Console output
- *          uses <stdio.h>: a recorded MISRA C:2012 Rule 21.6 deviation.
+ *          simulation with the stimulus as the kernel's source of clock edges and the VCD writer
+ *          as its listener (<dir>/waves.vcd), then print why and when the run stopped and where
+ *          the waveform is. `gatesim --check-only <netlist.net>`: load and check the netlist and
+ *          print a summary. `gatesim --help`: the usage text. Errors go to stderr as
+ *          "gatesim: file:line: text 'word'". Console output uses <stdio.h>: a recorded MISRA
+ *          C:2012 Rule 21.6 deviation.
  */
 #include <inttypes.h>
 #include <stdbool.h>
@@ -238,6 +239,10 @@ static ExitCode_t run_simulation(App_t *app, const char *stim_path, const char *
         if (status == STATUS_OK)
         {
             status = sk_init(&app->kernel, &app->nl, &app->queue, app->st.end_time);
+        }
+        if (status == STATUS_OK)
+        {
+            status = sk_set_source(&app->kernel, &app->st, st_expand);
         }
         if (status == STATUS_OK)
         {

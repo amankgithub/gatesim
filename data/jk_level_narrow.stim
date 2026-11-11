@@ -1,0 +1,8 @@
+# jk_level_narrow.stim : preset (Q = 1, as after a race-around), then one clock pulse only 2 ns wide at 60
+clock CLK period 100 high 2 start 60
+set J 1 @0
+set K 1 @0
+set CLR_N 1 @0
+set PRE_N 0 @0
+set PRE_N 1 @5
+end 90

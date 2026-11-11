@@ -1,0 +1,8 @@
+# jk_level.stim : J = K = 1, cleared at 0, CLK high from 20 to 40 (race-around)
+clock CLK period 40 high 20 start 20
+set J 1 @0
+set K 1 @0
+set PRE_N 1 @0
+set CLR_N 0 @0
+set CLR_N 1 @5
+end 50

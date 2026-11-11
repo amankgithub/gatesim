@@ -1,0 +1,16 @@
+# jk_level_narrow_Q.trace : data/jk_level.net + data/jk_level_narrow.stim
+# time value: every change of Q (from the reference model)
+2 1
+66 0
+68 1
+70 0
+72 1
+74 0
+76 1
+78 0
+80 1
+82 0
+84 1
+86 0
+88 1
+90 0

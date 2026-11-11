@@ -15,6 +15,7 @@ typedef enum
 {
     EV_GATE = 0,
     EV_SET,
+    EV_CLOCK,
     EV_COUNT
 } EventKind_t;
 

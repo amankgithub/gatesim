@@ -6,6 +6,7 @@
 #include "text_utils.h"
 
 #define SET_KEYWORD         "set"
+#define CLOCK_KEYWORD       "clock"
 #define END_KEYWORD         "end"
 #define TIME_MARK           '@'
 
@@ -13,6 +14,19 @@
 #define SET_W_VALUE         2U
 #define SET_W_TIME          3U
 #define SET_WORDS           4U
+
+#define CLOCK_W_NET         1U
+#define CLOCK_W_PERIOD_KEY  2U
+#define CLOCK_W_PERIOD      3U
+#define CLOCK_W_HIGH_KEY    4U
+#define CLOCK_W_HIGH        5U
+#define CLOCK_W_START_KEY   6U
+#define CLOCK_W_START       7U
+#define CLOCK_WORDS         8U
+#define PERIOD_WORD         "period"
+#define HIGH_WORD           "high"
+#define START_WORD          "start"
+#define MIN_CLOCK_HIGH      1U
 
 #define END_W_TIME          1U
 #define END_WORDS           2U
@@ -30,6 +44,7 @@ static void set_stim_diag(Diag_t *diag, Status_t status, const char *word)
 static void clear_stimulus(Stimulus_t *st)
 {
     st->set_count = 0U;
+    st->clock_count = 0U;
     st->has_end = false;
     st->end_time = 0U;
 }
@@ -46,6 +61,59 @@ static Status_t parse_time_word(const char *word, uint32_t *out_time)
     return status;
 }
 
+Status_t st_find_clock(const Stimulus_t *st, uint16_t net, uint8_t *out_clock)
+{
+    Status_t status = STATUS_NULL_ARG;
+
+    if ((st != NULL) && (out_clock != NULL))
+    {
+        uint32_t i = 0U;
+
+        status = STATUS_NOT_FOUND;
+        while ((status != STATUS_OK) && (i < (uint32_t)st->clock_count))
+        {
+            if (st->clocks[i].net == net)
+            {
+                *out_clock = (uint8_t)i;
+                status = STATUS_OK;
+            }
+            i++;
+        }
+    }
+    return status;
+}
+
+/* Tells whether a set line already drives a net. */
+static bool has_set_line(const Stimulus_t *st, uint16_t net)
+{
+    bool found = false;
+    uint32_t i = 0U;
+
+    while (!found && (i < (uint32_t)st->set_count))
+    {
+        found = (st->sets[i].net == net);
+        i++;
+    }
+    return found;
+}
+
+/* Finds a net that a stimulus line may drive: it exists and is an input. */
+static Status_t find_input_net(const Netlist_t *nl, const char *name, uint16_t *out_net)
+{
+    uint16_t net = 0U;
+    Status_t status = nl_find_net(nl, name, &net);
+
+    if ((status == STATUS_OK) && (nl->nets[net].driver != DRV_INPUT))
+    {
+        status = STATUS_NOT_INPUT;
+    }
+    if (status == STATUS_OK)
+    {
+        *out_net = net;
+    }
+    return status;
+}
+
 /* Handles "set NET VALUE */
 static Status_t parse_set_line(Stimulus_t *st, const Netlist_t *nl, char *const words[], uint32_t count,
                                uint32_t *out_bad_word)
@@ -57,11 +125,13 @@ static Status_t parse_set_line(Stimulus_t *st, const Netlist_t *nl, char *const 
     {
         SetLine_t set = { 0U, 0U, LV_0 };
 
+        uint8_t clock = 0U;
+
         bad_word = SET_W_NET;
-        status = nl_find_net(nl, words[SET_W_NET], &set.net);
-        if ((status == STATUS_OK) && (nl->nets[set.net].driver != DRV_INPUT))
+        status = find_input_net(nl, words[SET_W_NET], &set.net);
+        if ((status == STATUS_OK) && (st_find_clock(st, set.net, &clock) != STATUS_NOT_FOUND))
         {
-            status = STATUS_NOT_INPUT;
+            status = STATUS_TWO_DRIVERS;
         }
         if (status == STATUS_OK)
         {
@@ -82,6 +152,73 @@ static Status_t parse_set_line(Stimulus_t *st, const Netlist_t *nl, char *const 
         {
             st->sets[st->set_count] = set;
             st->set_count++;
+        }
+    }
+    if (status != STATUS_OK)
+    {
+        *out_bad_word = bad_word;
+    }
+    return status;
+}
+
+/* Handles "clock NET period P high H start S": every word checked left to right, then one clock stored. */
+static Status_t parse_clock_line(Stimulus_t *st, const Netlist_t *nl, char *const words[], uint32_t count,
+                                 uint32_t *out_bad_word)
+{
+    Status_t status = STATUS_SYNTAX;
+    uint32_t bad_word = 0U;
+
+    if (count == CLOCK_WORDS)
+    {
+        ClockDef_t clock = { 0U, 0U, 0U, 0U };
+        uint8_t other = 0U;
+
+        bad_word = CLOCK_W_NET;
+        status = find_input_net(nl, words[CLOCK_W_NET], &clock.net);
+        if ((status == STATUS_OK) &&
+            (has_set_line(st, clock.net) || (st_find_clock(st, clock.net, &other) != STATUS_NOT_FOUND)))
+        {
+            status = STATUS_TWO_DRIVERS;
+        }
+        if ((status == STATUS_OK) && (strcmp(words[CLOCK_W_PERIOD_KEY], PERIOD_WORD) != 0))
+        {
+            bad_word = CLOCK_W_PERIOD_KEY;
+            status = STATUS_SYNTAX;
+        }
+        if (status == STATUS_OK)
+        {
+            bad_word = CLOCK_W_PERIOD;
+            status = tu_parse_u32(words[CLOCK_W_PERIOD], MIN_CLOCK_PERIOD, MAX_TIME_NS, &clock.period);
+        }
+        if ((status == STATUS_OK) && (strcmp(words[CLOCK_W_HIGH_KEY], HIGH_WORD) != 0))
+        {
+            bad_word = CLOCK_W_HIGH_KEY;
+            status = STATUS_SYNTAX;
+        }
+        if (status == STATUS_OK)
+        {
+            bad_word = CLOCK_W_HIGH;
+            status = tu_parse_u32(words[CLOCK_W_HIGH], MIN_CLOCK_HIGH, clock.period - 1U, &clock.high);
+        }
+        if ((status == STATUS_OK) && (strcmp(words[CLOCK_W_START_KEY], START_WORD) != 0))
+        {
+            bad_word = CLOCK_W_START_KEY;
+            status = STATUS_SYNTAX;
+        }
+        if (status == STATUS_OK)
+        {
+            bad_word = CLOCK_W_START;
+            status = tu_parse_u32(words[CLOCK_W_START], 0U, MAX_TIME_NS, &clock.start);
+        }
+        if ((status == STATUS_OK) && ((uint32_t)st->clock_count >= MAX_CLOCKS))
+        {
+            bad_word = 0U;
+            status = STATUS_TABLE_FULL;
+        }
+        if (status == STATUS_OK)
+        {
+            st->clocks[st->clock_count] = clock;
+            st->clock_count++;
         }
     }
     if (status != STATUS_OK)
@@ -141,6 +278,10 @@ Status_t st_parse_line(Stimulus_t *st, const Netlist_t *nl, char *line, Diag_t *
             if (strcmp(words[0], SET_KEYWORD) == 0)
             {
                 status = parse_set_line(st, nl, words, count, &bad_word);
+            }
+            else if (strcmp(words[0], CLOCK_KEYWORD) == 0)
+            {
+                status = parse_clock_line(st, nl, words, count, &bad_word);
             }
             else if (strcmp(words[0], END_KEYWORD) == 0)
             {
@@ -272,6 +413,7 @@ Status_t st_seed(const Stimulus_t *st, EventQueue_t *queue)
                 needed++;
             }
         }
+        needed += (uint32_t)st->clock_count;
         if (((uint32_t)queue->count + needed) > MAX_EVENTS)
         {
             status = STATUS_QUEUE_FULL;
@@ -286,6 +428,60 @@ Status_t st_seed(const Stimulus_t *st, EventQueue_t *queue)
                 status = eq_add(queue, set->time, EV_SET, set->net, set->value);
             }
             i++;
+        }
+        i = 0U;
+        while ((i < (uint32_t)st->clock_count) && (status == STATUS_OK))
+        {
+            const LogicValue_t first = (st->clocks[i].start > 0U) ? LV_0 : LV_1;
+
+            status = eq_add(queue, 0U, EV_CLOCK, (uint16_t)i, first);
+            i++;
+        }
+    }
+    return status;
+}
+
+Status_t st_expand(const void *source, const Event_t *event, uint32_t end_time, SkExpansion_t *out)
+{
+    Status_t status = STATUS_OK;
+
+    if ((source == NULL) || (event == NULL) || (out == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else
+    {
+        const Stimulus_t *const st = (const Stimulus_t *)source;
+
+        if ((event->kind != EV_CLOCK) || ((uint32_t)event->index >= (uint32_t)st->clock_count) ||
+            ((event->value != LV_0) && (event->value != LV_1)))
+        {
+            status = STATUS_BAD_ARG;
+        }
+        else
+        {
+            const ClockDef_t *const clock = &st->clocks[event->index];
+            SkExpansion_t x;
+
+            x.net = clock->net;
+            x.value = event->value;
+            if (event->value == LV_1)
+            {
+                x.next_time = event->time + clock->high;
+                x.next_value = LV_0;
+            }
+            else if (event->time < clock->start)
+            {
+                x.next_time = clock->start;
+                x.next_value = LV_1;
+            }
+            else
+            {
+                x.next_time = event->time + (clock->period - clock->high);
+                x.next_value = LV_1;
+            }
+            x.has_next = (x.next_time <= end_time);
+            *out = x;
         }
     }
     return status;

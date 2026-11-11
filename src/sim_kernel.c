@@ -20,6 +20,28 @@ static void set_net(SimKernel_t *k, uint16_t net, LogicValue_t value)
     }
 }
 
+/* Applies a stimulus event that the kernel does not know, through the source's expansion hook */
+static Status_t expand_event(SimKernel_t *k, const Event_t *event)
+{
+    Status_t status = STATUS_BAD_ARG;
+
+    if (k->expand != NULL)
+    {
+        SkExpansion_t x;
+
+        status = k->expand(k->source, event, k->end_time, &x);
+        if (status == STATUS_OK)
+        {
+            set_net(k, x.net, x.value);
+            if (x.has_next)
+            {
+                status = eq_add(k->queue, x.next_time, event->kind, event->index, x.next_value);
+            }
+        }
+    }
+    return status;
+}
+
 /* Applies one event taken from the list. */
 static Status_t apply_event(SimKernel_t *k, const Event_t *event)
 {
@@ -51,7 +73,7 @@ static Status_t apply_event(SimKernel_t *k, const Event_t *event)
             }
             break;
         default:
-            status = STATUS_BAD_ARG;
+            status = expand_event(k, event);
             break;
     }
     return status;
@@ -247,6 +269,8 @@ Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t en
         }
         k->nl = nl;
         k->queue = queue;
+        k->source = NULL;
+        k->expand = NULL;
         k->listener.ctx = NULL;
         k->listener.on_change = NULL;
         k->has_listener = false;
@@ -283,6 +307,19 @@ Status_t sk_set_listener(SimKernel_t *k, const SkListener_t *listener)
     {
         k->listener = *listener;
         k->has_listener = true;
+        status = STATUS_OK;
+    }
+    return status;
+}
+
+Status_t sk_set_source(SimKernel_t *k, const void *source, SkExpandFn_t expand)
+{
+    Status_t status = STATUS_NULL_ARG;
+
+    if ((k != NULL) && (source != NULL) && (expand != NULL))
+    {
+        k->source = source;
+        k->expand = expand;
         status = STATUS_OK;
     }
     return status;

@@ -125,6 +125,7 @@ protected:
         const SkListener_t recorder = {&changes, RecordChange};
 
         ASSERT_EQ(sk_init(&k, &nl, &queue, end_time), STATUS_OK);
+        ASSERT_EQ(sk_set_source(&k, &st, st_expand), STATUS_OK);
         ASSERT_EQ(sk_set_listener(&k, &recorder), STATUS_OK);
         ASSERT_EQ(sk_run(&k, &result), STATUS_OK);
         EXPECT_EQ(k.changed_count, 0U);
@@ -262,4 +263,33 @@ TEST_F(Kernel, RaceAroundPeriodEight)
     const std::vector<Change> expected = {{24U, LV_1}, {30U, LV_0}, {32U, LV_1}, {38U, LV_0}, {40U, LV_1}};
     EXPECT_EQ(after_rise, expected);
     EXPECT_EQ(result.reason, STOP_QUEUE_EMPTY);
+}
+
+TEST_F(Kernel, ClockLineDrivesRaceAround)
+{
+    Load("data/jk_level.net");
+    RunToEnd(Seed("data/jk_level.stim"));
+
+    const std::vector<Change> clk = {{0U, LV_0}, {20U, LV_1}, {40U, LV_0}};
+    EXPECT_EQ(ChangesOf("CLK"), clk);
+    const std::vector<Change> q = {{4U, LV_0}, {24U, LV_1}, {30U, LV_0}, {32U, LV_1}, {38U, LV_0}, {40U, LV_1}};
+    EXPECT_EQ(ChangesOf("Q"), q);
+    const std::vector<Change> qn = {{2U, LV_1}, {26U, LV_0}, {28U, LV_1}, {34U, LV_0}, {36U, LV_1}, {42U, LV_0}};
+    EXPECT_EQ(ChangesOf("QN"), qn);
+    EXPECT_EQ(result.reason, STOP_QUEUE_EMPTY);
+    EXPECT_EQ(result.stop_time, 42U);
+    EXPECT_EQ(result.events_applied, 32U);
+}
+
+TEST_F(Kernel, NarrowPulseLeavesLatchUndecided)
+{
+    Load("data/jk_level.net");
+    RunToEnd(Seed("data/jk_level_narrow.stim"));
+
+    EXPECT_EQ(ChangesOf("Q"), ReadTrace("tests/data/jk_level_narrow_Q.trace"));
+    const std::vector<Change> clk = {{0U, LV_0}, {60U, LV_1}, {62U, LV_0}};
+    EXPECT_EQ(ChangesOf("CLK"), clk);
+    EXPECT_EQ(result.reason, STOP_END_TIME);
+    EXPECT_EQ(result.stop_time, 90U);
+    EXPECT_EQ(result.events_applied, 41U);
 }
