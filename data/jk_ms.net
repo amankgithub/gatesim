@@ -1,0 +1,5 @@
+# jk_ms.net : one master-slave JK flip-flop from the library (race-around removed)
+include ../lib/flipflops.net
+input  J K CLK PRE_N CLR_N
+output Q QN
+inst FF JK_MS J=J K=K CLK=CLK PRE=PRE_N CLR=CLR_N Q=Q QN=QN

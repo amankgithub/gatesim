@@ -7,6 +7,7 @@
 #include <string.h>
 
 #define DECIMAL_BASE    10
+#define ASSIGN_CHAR     '='
 
 /* Tells whether a character separates words (space or tab). */
 static bool is_separator(char c)
@@ -267,15 +268,22 @@ Status_t tu_open(LineReader_t *reader, const char *path)
     }
     else
     {
-        FILE *const fp = fopen(path, "r");
+        char copy[MAX_PATH_LEN];
+        FILE *fp = NULL;
 
-        if (fp == NULL)
+        status = tu_copy_text(copy, MAX_PATH_LEN, path);
+        if (status == STATUS_OK)
         {
-            status = STATUS_FILE_OPEN;
+            fp = fopen(path, "r");
+            if (fp == NULL)
+            {
+                status = STATUS_FILE_OPEN;
+            }
         }
-        else
+        if (status == STATUS_OK)
         {
             reader->fp = fp;
+            (void)memcpy(reader->path, copy, MAX_PATH_LEN);
             reader->line_no = 0U;
         }
     }
@@ -383,6 +391,74 @@ Status_t tu_join_dir(const char *dir, const char *file_name, char *out, uint32_t
         if ((written < 0) || ((uint32_t)written >= out_size))
         {
             status = STATUS_BAD_ARG;
+        }
+    }
+    return status;
+}
+
+Status_t tu_split_assign(char *word, char **out_left, char **out_right)
+{
+    Status_t status = STATUS_OK;
+
+    if ((word == NULL) || (out_left == NULL) || (out_right == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else
+    {
+        char *const assign = strchr(word, (int)ASSIGN_CHAR);
+
+        if ((assign == NULL) || (assign == word) || (assign[1] == '\0') ||
+            (strchr(&assign[1], (int)ASSIGN_CHAR) != NULL))
+        {
+            status = STATUS_SYNTAX;
+        }
+        else
+        {
+            *assign = '\0';
+            *out_left = word;
+            *out_right = &assign[1];
+        }
+    }
+    return status;
+}
+
+Status_t tu_join_path(const char *base_file, const char *relative, char *out, uint32_t out_size)
+{
+    Status_t status = STATUS_OK;
+
+    if ((base_file == NULL) || (relative == NULL) || (out == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else
+    {
+        size_t dir_len = 0U;
+
+        if (relative[0] != '/')
+        {
+            size_t i;
+
+            for (i = 0U; base_file[i] != '\0'; i++)
+            {
+                if (base_file[i] == '/')
+                {
+                    dir_len = i + 1U;
+                }
+            }
+        }
+        if ((dir_len + strlen(relative)) >= (size_t)out_size)
+        {
+            status = STATUS_BAD_ARG;
+        }
+        else
+        {
+            const int written = snprintf(out, (size_t)out_size, "%.*s%s", (int)dir_len, base_file, relative);
+
+            if ((written < 0) || ((uint32_t)written >= out_size))
+            {
+                status = STATUS_BAD_ARG;
+            }
         }
     }
     return status;

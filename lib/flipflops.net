@@ -1,0 +1,39 @@
+# lib/flipflops.net : flip-flops and latches built from gates (GateSim library)
+# Every block holds only gate lines (one level).
+
+# Master-slave JK, 9 gates. PRE and CLR are active low. They also block the
+# master input gates, so a clear wins even while CLK is still X.
+subckt JK_MS J K CLK PRE CLR -> Q QN
+gate m1 NAND #2  a1 = J CLK QN CLR
+gate m2 NAND #2  a2 = K CLK Q PRE
+gate m3 NAND #2  y  = a1 yn PRE
+gate m4 NAND #2  yn = a2 y CLR
+gate i1 NOT  #1  cn = CLK
+gate s1 NAND #2  b1 = y cn
+gate s2 NAND #2  b2 = yn cn
+gate s3 NAND #2  Q  = b1 QN PRE
+gate s4 NAND #2  QN = b2 Q CLR
+ends
+
+# Level-triggered JK, 4 NAND gates (shows race-around when J = K = 1 and CLK stays high).
+subckt JK_LEVEL J K CLK PRE CLR -> Q QN
+gate g1 NAND #2  a1 = J CLK QN
+gate g2 NAND #2  a2 = K CLK Q
+gate g3 NAND #2  Q  = a1 QN PRE
+gate g4 NAND #2  QN = a2 Q CLR
+ends
+
+# SR latch from two NOR gates (S = R = 1 is the not-allowed state).
+subckt SR_NOR S R -> Q QN
+gate n1 NOR #2  Q  = R QN
+gate n2 NOR #2  QN = S Q
+ends
+
+# Gated D latch from NAND gates: transparent while EN = 1, holds while EN = 0.
+subckt D_LATCH D EN PRE CLR -> Q QN
+gate i1 NOT  #1  dn = D
+gate g1 NAND #2  s  = D EN
+gate g2 NAND #2  r  = dn EN
+gate g3 NAND #2  Q  = s QN PRE
+gate g4 NAND #2  QN = r Q CLR
+ends

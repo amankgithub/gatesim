@@ -36,7 +36,9 @@ const char *status_text(Status_t status)
         "net is not an input",
         "missing end line",
         "net is read but never driven",
-        "cannot write file"
+        "cannot write file",
+        "port missing, unknown or connected twice",
+        "not allowed here"
     };
     const char *text = STATUS_UNKNOWN_TEXT;
 

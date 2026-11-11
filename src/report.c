@@ -35,7 +35,7 @@ static uint32_t vcd_code_length(uint16_t net)
     return ((uint32_t)net < VCD_CODE_COUNT) ? 1U : 2U;
 }
 
-/* Writes the header, the $var line of every net and every net as x at time 0. */
+/* Writes the header, the $var line of every net and every start value at time 0. */
 static bool write_header(FILE *fp, const Netlist_t *nl)
 {
     bool ok = (fprintf(fp, "$version GateSim %s $end\n$timescale 1ns $end\n$scope module gatesim $end\n",
@@ -60,7 +60,7 @@ static bool write_header(FILE *fp, const Netlist_t *nl)
         char code[RW_VCD_CODE_SIZE];
 
         vcd_code((uint16_t)i, code);
-        ok = (fprintf(fp, "x%s\n", code) >= 0);
+        ok = (fprintf(fp, "%c%s\n", lg_value_char(nl->nets[i].init_value), code) >= 0);
         i++;
     }
     if (ok)

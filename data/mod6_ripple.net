@@ -1,0 +1,9 @@
+# mod6_ripple.net : asynchronous (ripple) mod-6 counter, NAND(Q2, Q1) clears every flip-flop
+include ../lib/flipflops.net
+input  CLK RST_N
+output Q2 Q1 Q0
+gate GR NAND #2  CLRB = Q2 Q1
+gate GA AND  #1  CL   = CLRB RST_N
+inst F0 JK_MS J=VCC K=VCC CLK=CLK PRE=VCC CLR=CL Q=Q0 QN=Q0N
+inst F1 JK_MS J=VCC K=VCC CLK=Q0  PRE=VCC CLR=CL Q=Q1 QN=Q1N
+inst F2 JK_MS J=VCC K=VCC CLK=Q1  PRE=VCC CLR=CL Q=Q2 QN=Q2N

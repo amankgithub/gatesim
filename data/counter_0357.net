@@ -1,0 +1,9 @@
+# counter_0357.net : synchronous counter 0 -> 3 -> 5 -> 7 -> 0 from master-slave JK flip-flops
+# Hand design: J2 = K2 = Q1, J1 = K1 = 1, J0 = 1, K0 = Q2.Q1
+include ../lib/flipflops.net
+input  CLK P2 P1 P0 C2 C1 C0        # active-low preset/clear per flip-flop
+output Q2 Q1 Q0
+inst FF2 JK_MS J=Q1  K=Q1  CLK=CLK PRE=P2 CLR=C2 Q=Q2 QN=Q2N
+inst FF1 JK_MS J=VCC K=VCC CLK=CLK PRE=P1 CLR=C1 Q=Q1 QN=Q1N
+inst FF0 JK_MS J=VCC K=K0  CLK=CLK PRE=P0 CLR=C0 Q=Q0 QN=Q0N
+gate G1 AND #2  K0 = Q2 Q1

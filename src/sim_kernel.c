@@ -257,7 +257,7 @@ Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t en
 
         for (i = 0U; i < (uint32_t)nl->net_count; i++)
         {
-            nl->nets[i].value = LV_X;
+            nl->nets[i].value = nl->nets[i].init_value;
         }
         for (i = 0U; i < (uint32_t)nl->gate_count; i++)
         {

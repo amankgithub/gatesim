@@ -1,0 +1,2 @@
+# include_again.net : an included file may not include another file
+include ../../lib/adders.net

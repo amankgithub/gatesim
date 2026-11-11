@@ -1,0 +1,5 @@
+# nested_include.net : includes a file that itself has an include line (not allowed in version 1)
+include include_again.net
+input a
+output y
+gate g1 NOT #1  y = a

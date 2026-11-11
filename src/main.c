@@ -128,7 +128,7 @@ static ExitCode_t load_netlist(App_t *app, const char *path)
     return code;
 }
 
-/* Prints the summary of a loaded netlist (--check-only): the file, the gates per type, the nets, the warnings. */
+/* Prints the summary of a loaded netlist (--check-only) */
 static void print_check_only(const Netlist_t *nl, const char *path)
 {
     uint32_t type_count[GT_COUNT];
@@ -156,6 +156,7 @@ static void print_check_only(const Netlist_t *nl, const char *path)
     (void)printf("%s\n", first ? "" : ")");
     (void)printf("  nets     : %" PRIu16 " (inputs %" PRIu16 ", outputs %" PRIu16 ")\n", nl->net_count,
                  nl->input_count, nl->output_count);
+    (void)printf("  blocks   : %" PRIu8 " defined, %" PRIu16 " instances\n", nl->block_count, nl->inst_count);
     (void)printf("  warnings : %" PRIu16 "\n", nl->warning_count);
     for (i = 0U; (i < (uint32_t)nl->warning_count) && (i < MAX_WARNINGS); i++)
     {

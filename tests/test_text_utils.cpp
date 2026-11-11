@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iterator>
 #include <string>
+#include <vector>
 
 #include "text_utils.h"
 
@@ -143,6 +144,7 @@ TEST(ReadLine, ReadsLinesAndCountsThem)
 
     ASSERT_EQ(tu_open(&reader, "tests/data/lines_ok.txt"), STATUS_OK);
     EXPECT_EQ(reader.line_no, 0U);
+    EXPECT_STREQ(reader.path, "tests/data/lines_ok.txt");
     for (const char *text : expected)
     {
         ASSERT_EQ(tu_read_line(&reader, buf, MAX_LINE_LEN), STATUS_OK);
@@ -197,6 +199,12 @@ TEST(OpenFile, MissingFileFails)
     EXPECT_EQ(tu_open(&reader, "tests/data/no_such_file.txt"), STATUS_FILE_OPEN);
     EXPECT_EQ(reader.fp, nullptr);
     EXPECT_EQ(reader.line_no, SENTINEL);
+
+    /* a path that the reader cannot keep is rejected before the file is opened */
+    const std::string too_long(MAX_PATH_LEN, 'a');
+    EXPECT_EQ(tu_open(&reader, too_long.c_str()), STATUS_BAD_ARG);
+    EXPECT_EQ(reader.fp, nullptr);
+    EXPECT_EQ(reader.line_no, SENTINEL);
 }
 
 TEST(SetDiag, FormatsWhatAndName)
@@ -231,4 +239,46 @@ TEST(JoinDir, AddsSlash)
     EXPECT_STREQ(small, "unchanged");
     EXPECT_EQ(tu_join_dir("", "waves.vcd", path, MAX_PATH_LEN), STATUS_BAD_ARG);
     EXPECT_STREQ(path, "output/waves.vcd");
+}
+
+TEST(SplitAssign, SplitsPortAndNet)
+{
+    char word[] = "J=Q1";
+    char *left = nullptr;
+    char *right = nullptr;
+
+    ASSERT_EQ(tu_split_assign(word, &left, &right), STATUS_OK);
+    EXPECT_STREQ(left, "J");
+    EXPECT_STREQ(right, "Q1");
+
+    const char *const bad[] = {"J=", "=Q1", "JQ1", "J=Q=1"};
+    for (const char *text : bad)
+    {
+        SCOPED_TRACE(std::string("word \"") + text + "\"");
+        std::string copy(text);
+        std::vector<char> buf(copy.begin(), copy.end());
+        buf.push_back('\0');
+        char *l = nullptr;
+        char *r = nullptr;
+        EXPECT_EQ(tu_split_assign(buf.data(), &l, &r), STATUS_SYNTAX);
+        EXPECT_STREQ(buf.data(), text);
+        EXPECT_EQ(l, nullptr);
+        EXPECT_EQ(r, nullptr);
+    }
+}
+
+TEST(JoinPath, UsesDirectoryOfBaseFile)
+{
+    char path[MAX_PATH_LEN] = "unchanged";
+
+    ASSERT_EQ(tu_join_path("data/counter_0357.net", "../lib/flipflops.net", path, MAX_PATH_LEN), STATUS_OK);
+    EXPECT_STREQ(path, "data/../lib/flipflops.net");
+    ASSERT_EQ(tu_join_path("x.net", "lib/a.net", path, MAX_PATH_LEN), STATUS_OK);
+    EXPECT_STREQ(path, "lib/a.net");
+    ASSERT_EQ(tu_join_path("data/x.net", "/abs/a.net", path, MAX_PATH_LEN), STATUS_OK);
+    EXPECT_STREQ(path, "/abs/a.net");
+
+    char small[10] = "unchanged";
+    EXPECT_EQ(tu_join_path("data/x.net", "a.net", small, sizeof(small)), STATUS_BAD_ARG);
+    EXPECT_STREQ(small, "unchanged");
 }

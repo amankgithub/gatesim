@@ -14,10 +14,11 @@ extern "C" {
 typedef struct
 {
     FILE     *fp;
+    char      path[MAX_PATH_LEN];
     uint32_t  line_no;
 } LineReader_t;
 
-/* Opens a text file for reading. */
+/* Opens a text file for reading and keeps its path. */
 Status_t tu_open(LineReader_t *reader, const char *path);
 
 /* Reads the next line without its '\n' and a trailing '\r' (CRLF files). */
@@ -46,6 +47,12 @@ Status_t tu_set_diag(Diag_t *diag, const char *file, uint32_t line, const char *
 
 /* Builds the path of a file in a folder: dir + "/" + file_name ("output/waves.vcd"). */
 Status_t tu_join_dir(const char *dir, const char *file_name, char *out, uint32_t out_size);
+
+/* Splits a word "LEFT=RIGHT" in place ("J=Q1" gives "J" and "Q1"). */
+Status_t tu_split_assign(char *word, char **out_left, char **out_right);
+
+/* Builds the path of a file named relative to another file: the folder of base_file */
+Status_t tu_join_path(const char *base_file, const char *relative, char *out, uint32_t out_size);
 
 #ifdef __cplusplus
 }

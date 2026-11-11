@@ -53,8 +53,8 @@ TEST_OBJ   := $(patsubst $(SRC_DIR)/%.c,$(TEST_BUILD)/src/%.o,$(LIB_SRC)) \
 DEPS       := $(OBJ:.o=.d) $(TEST_OBJ:.o=.d)
 
 # Arguments of the program for make run (override: make run ARGS="...")
-# demo: race-around of a level-triggered JK flip-flop driven by a clock line, waveform in output/waves.vcd
-ARGS       ?= data/jk_level.net data/jk_level.stim --out $(OUTPUT_DIR)
+# demo: master-slave JK flip-flop from the library (race-around removed), waveform in output/waves.vcd
+ARGS       ?= data/jk_ms.net data/jk_ms.stim --out $(OUTPUT_DIR)
 
 .PHONY: all run test clean check
 

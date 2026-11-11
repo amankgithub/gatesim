@@ -63,7 +63,7 @@ typedef struct
     uint16_t      changed_count;
 } SimKernel_t;
 
-/* Prepares a run: every net value becomes X (power-up unknown) and no gate has a pending change. */
+/* Prepares a run: every net takes its start value (init_value: X, the power-up unknown; */
 Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t end_time);
 
 /* Sets the listener of the run (after sk_init, before sk_run); a second call replaces it. */

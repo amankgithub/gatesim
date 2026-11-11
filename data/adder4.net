@@ -1,0 +1,8 @@
+# adder4.net : 4-bit ripple-carry adder from 4 full-adder blocks (20 gates)
+include ../lib/adders.net
+input  A3 A2 A1 A0 B3 B2 B1 B0 CIN
+output COUT S3 S2 S1 S0
+inst U0 FA A=A0 B=B0 CI=CIN S=S0 CO=C1
+inst U1 FA A=A1 B=B1 CI=C1  S=S1 CO=C2
+inst U2 FA A=A2 B=B2 CI=C2  S=S2 CO=C3
+inst U3 FA A=A3 B=B3 CI=C3  S=S3 CO=COUT

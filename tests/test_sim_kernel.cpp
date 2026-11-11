@@ -293,3 +293,17 @@ TEST_F(Kernel, NarrowPulseLeavesLatchUndecided)
     EXPECT_EQ(result.stop_time, 90U);
     EXPECT_EQ(result.events_applied, 41U);
 }
+
+TEST_F(Kernel, MasterSlaveTogglesOncePerClock)
+{
+    Load("data/jk_ms.net");
+    RunToEnd(Seed("data/jk_ms.stim"));
+
+    const std::vector<Change> q = {{8U, LV_0}, {45U, LV_1}, {87U, LV_0}};
+    EXPECT_EQ(ChangesOf("Q"), q);
+    const std::vector<Change> qn = {{2U, LV_1}, {47U, LV_0}, {85U, LV_1}};
+    EXPECT_EQ(ChangesOf("QN"), qn);
+    EXPECT_EQ(result.reason, STOP_END_TIME);
+    EXPECT_EQ(result.stop_time, 100U);
+    EXPECT_EQ(result.events_applied, 40U);
+}

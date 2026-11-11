@@ -1,0 +1,16 @@
+# lib/adders.net : adders built from gates (GateSim library)
+
+# Half adder: S = A xor B, CO = A and B.
+subckt HA A B -> S CO
+gate x XOR #3  S  = A B
+gate a AND #2  CO = A B
+ends
+
+# Full adder, 5 gates (half-adder logic written out, plus the carry OR).
+subckt FA A B CI -> S CO
+gate h1x XOR #3  s1 = A B
+gate h1a AND #2  c1 = A B
+gate h2x XOR #3  S  = s1 CI
+gate h2a AND #2  c2 = s1 CI
+gate o   OR  #2  CO = c1 c2
+ends

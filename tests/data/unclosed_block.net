@@ -1,0 +1,3 @@
+# unclosed_block.net : the file ends inside a subckt
+subckt INV A -> Y
+gate g1 NOT #1  Y = A
