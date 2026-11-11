@@ -1,0 +1,7 @@
+# jk_level.net : level-triggered JK flip-flop from 4 NAND gates (race-around demo)
+input  J K CLK PRE_N CLR_N
+output Q QN
+gate g1 NAND #2  A1 = J CLK QN
+gate g2 NAND #2  A2 = K CLK Q
+gate g3 NAND #2  Q  = A1 QN PRE_N
+gate g4 NAND #2  QN = A2 Q CLR_N

@@ -102,3 +102,19 @@ TEST_F(EventQueue, EmptyListHasNoEarliest)
     EXPECT_EQ(row, SENTINEL);
     EXPECT_EQ(eq_find_earliest(nullptr, &row), STATUS_NULL_ARG);
 }
+
+TEST_F(EventQueue, FindsGateEvent)
+{
+    uint16_t row = SENTINEL;
+
+    ASSERT_EQ(eq_add(&q, 10U, EV_SET, 2U, LV_1), STATUS_OK);
+    ASSERT_EQ(eq_add(&q, 12U, EV_GATE, 1U, LV_0), STATUS_OK);
+    ASSERT_EQ(eq_add(&q, 15U, EV_GATE, 2U, LV_1), STATUS_OK);
+    ASSERT_EQ(eq_find_gate_event(&q, 2U, &row), STATUS_OK);
+    EXPECT_EQ(row, 2U);
+    EXPECT_EQ(q.rows[row].time, 15U);
+
+    row = SENTINEL;
+    EXPECT_EQ(eq_find_gate_event(&q, 5U, &row), STATUS_NOT_FOUND);
+    EXPECT_EQ(row, SENTINEL);
+}

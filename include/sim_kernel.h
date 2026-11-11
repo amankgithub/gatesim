@@ -36,8 +36,11 @@ typedef struct
     uint16_t      changed_count;
 } SimKernel_t;
 
-/* Prepares a run: every net value and every gate's scheduled value become 0. */
+/* Prepares a run: every net value becomes X (power-up unknown) and no gate has a pending change. */
 Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t end_time);
+
+/* Gives the delay of a gate's output change */
+Status_t sk_gate_delay(const Gate_t *gate, LogicValue_t new_value, uint16_t *out_delay);
 
 /* Processes one time step. */
 Status_t sk_step(SimKernel_t *k, bool *out_done);

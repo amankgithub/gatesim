@@ -1,0 +1,11 @@
+# sr_nor.stim : reset, set, then S = R = 1 released together (symmetric oscillation)
+set S 0 @0
+set R 1 @0           # reset
+set R 0 @10          # hold
+set S 1 @20          # set
+set S 0 @24          # hold
+set S 1 @40          # not-allowed state
+set R 1 @40
+set S 0 @50          # both released together
+set R 0 @50
+end 80

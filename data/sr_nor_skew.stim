@@ -1,0 +1,11 @@
+# sr_nor_skew.stim : same, but R is released 1 ns after S (the latch settles in reset)
+set S 0 @0
+set R 1 @0           # reset
+set R 0 @10          # hold
+set S 1 @20          # set
+set S 0 @24          # hold
+set S 1 @40          # not-allowed state
+set R 1 @40
+set S 0 @50          # S released first
+set R 0 @51          # R released 1 ns later
+end 80

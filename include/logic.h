@@ -13,7 +13,8 @@ typedef uint8_t LogicValue_t;
 
 #define LV_0        ((LogicValue_t)0U)
 #define LV_1        ((LogicValue_t)1U)
-#define LV_COUNT    2U
+#define LV_X        ((LogicValue_t)2U)
+#define LV_COUNT    3U
 
 typedef enum
 {

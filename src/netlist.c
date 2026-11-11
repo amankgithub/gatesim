@@ -129,7 +129,7 @@ Status_t nl_find_or_add_net(Netlist_t *nl, const char *name, uint16_t *out_index
             {
                 added.driver = DRV_NONE;
                 added.is_output = false;
-                added.value = LV_0;
+                added.value = LV_X;
                 index = nl->net_count;
                 nl->nets[index] = added;
                 nl->net_count++;
@@ -178,21 +178,43 @@ static Status_t add_output(Netlist_t *nl, const char *name)
     return status;
 }
 
-Status_t nl_parse_delay(const char *word, uint16_t *out_delay)
+Status_t nl_parse_delay(const char *word, uint16_t *out_rise, uint16_t *out_fall)
 {
     Status_t status = STATUS_NULL_ARG;
 
-    if ((word != NULL) && (out_delay != NULL))
+    if ((word != NULL) && (out_rise != NULL) && (out_fall != NULL))
     {
         status = STATUS_SYNTAX;
         if (word[0] == '#')
         {
-            uint32_t delay = 0U;
+            char text[MAX_LINE_LEN];
+            uint32_t rise = 0U;
+            uint32_t fall = 0U;
 
-            status = tu_parse_u32(&word[1], MIN_DELAY, MAX_DELAY, &delay);
+            status = (tu_copy_text(text, MAX_LINE_LEN, &word[1]) == STATUS_OK) ? STATUS_OK : STATUS_BAD_NUMBER;
             if (status == STATUS_OK)
             {
-                *out_delay = (uint16_t)delay;
+                char *const comma = strchr(text, (int)',');
+
+                if (comma == NULL)
+                {
+                    status = tu_parse_u32(text, MIN_DELAY, MAX_DELAY, &rise);
+                    fall = rise;
+                }
+                else
+                {
+                    *comma = '\0';
+                    status = tu_parse_u32(text, MIN_DELAY, MAX_DELAY, &rise);
+                    if (status == STATUS_OK)
+                    {
+                        status = tu_parse_u32(&comma[1], MIN_DELAY, MAX_DELAY, &fall);
+                    }
+                }
+            }
+            if (status == STATUS_OK)
+            {
+                *out_rise = (uint16_t)rise;
+                *out_fall = (uint16_t)fall;
             }
         }
     }
@@ -226,7 +248,7 @@ static Status_t parse_gate_words(char *const words[], uint32_t count, GateSpec_t
         if (status == STATUS_OK)
         {
             bad_word = GW_DELAY;
-            status = nl_parse_delay(words[GW_DELAY], &spec.delay);
+            status = nl_parse_delay(words[GW_DELAY], &spec.rise, &spec.fall);
         }
         if (status == STATUS_OK)
         {
@@ -272,7 +294,7 @@ static Status_t check_gate(const Netlist_t *nl, const GateSpec_t *spec)
 {
     Status_t status = STATUS_OK;
 
-    if ((uint32_t)nl->gate_count >= MAX_GATES)
+    if ((status == STATUS_OK) && ((uint32_t)nl->gate_count >= MAX_GATES))
     {
         status = STATUS_TABLE_FULL;
     }
@@ -334,7 +356,8 @@ Status_t nl_add_gate(Netlist_t *nl, const GateSpec_t *spec)
             status = tu_copy_text(gate.name, MAX_NAME_LEN, spec->name);
             gate.type = spec->type;
             gate.in_count = spec->in_count;
-            gate.delay = spec->delay;
+            gate.rise = spec->rise;
+            gate.fall = spec->fall;
             if (status == STATUS_OK)
             {
                 status = nl_find_or_add_net(nl, spec->out, &gate.out);

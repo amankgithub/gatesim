@@ -106,6 +106,7 @@ TEST_F(FindOrAdd, AddsNewNetAtEnd)
     EXPECT_EQ(NetName(4U), "EN");
     EXPECT_EQ(nl.nets[4].driver, DRV_NONE);
     EXPECT_FALSE(nl.nets[4].is_output);
+    EXPECT_EQ(nl.nets[4].value, LV_X);
 }
 
 TEST_F(FindOrAdd, RejectsWhenTableFull)
@@ -141,32 +142,43 @@ TEST_F(FindOrAdd, RejectsWhenTableFull)
     EXPECT_EQ(nl.gate_count, 1U);
 }
 
-TEST(ParseDelay, AcceptsRange)
+TEST(ParseDelay, SingleAndRiseFall)
 {
-    uint16_t delay = SENTINEL;
+    uint16_t rise = SENTINEL;
+    uint16_t fall = SENTINEL;
 
-    ASSERT_EQ(nl_parse_delay("#2", &delay), STATUS_OK);
-    EXPECT_EQ(delay, 2U);
-    ASSERT_EQ(nl_parse_delay("#1", &delay), STATUS_OK);
-    EXPECT_EQ(delay, 1U);
-    ASSERT_EQ(nl_parse_delay("#1000", &delay), STATUS_OK);
-    EXPECT_EQ(delay, 1000U);
+    ASSERT_EQ(nl_parse_delay("#2", &rise, &fall), STATUS_OK);
+    EXPECT_EQ(rise, 2U);
+    EXPECT_EQ(fall, 2U);
+    ASSERT_EQ(nl_parse_delay("#2,5", &rise, &fall), STATUS_OK);
+    EXPECT_EQ(rise, 2U);
+    EXPECT_EQ(fall, 5U);
+    ASSERT_EQ(nl_parse_delay("#1", &rise, &fall), STATUS_OK);
+    EXPECT_EQ(rise, 1U);
+    EXPECT_EQ(fall, 1U);
+    ASSERT_EQ(nl_parse_delay("#1000", &rise, &fall), STATUS_OK);
+    EXPECT_EQ(rise, 1000U);
+    EXPECT_EQ(fall, 1000U);
 }
 
 TEST(ParseDelay, RejectsBadDelays)
 {
-    const char *const bad[] = {"#0", "#1001", "#a"};
+    const char *const bad[] = {"#0", "#1001", "#a", "#2,", "#2,0", "#,5", "#2,5,6"};
 
     for (const char *word : bad)
     {
         SCOPED_TRACE(std::string("word \"") + word + "\"");
-        uint16_t delay = SENTINEL;
-        EXPECT_EQ(nl_parse_delay(word, &delay), STATUS_BAD_NUMBER);
-        EXPECT_EQ(delay, SENTINEL);
+        uint16_t rise = SENTINEL;
+        uint16_t fall = SENTINEL;
+        EXPECT_EQ(nl_parse_delay(word, &rise, &fall), STATUS_BAD_NUMBER);
+        EXPECT_EQ(rise, SENTINEL);
+        EXPECT_EQ(fall, SENTINEL);
     }
-    uint16_t delay = SENTINEL;
-    EXPECT_EQ(nl_parse_delay("2", &delay), STATUS_SYNTAX);
-    EXPECT_EQ(delay, SENTINEL);
+    uint16_t rise = SENTINEL;
+    uint16_t fall = SENTINEL;
+    EXPECT_EQ(nl_parse_delay("2", &rise, &fall), STATUS_SYNTAX);
+    EXPECT_EQ(rise, SENTINEL);
+    EXPECT_EQ(fall, SENTINEL);
 }
 
 TEST_F(GateLine, ValidLineAddsGate)
@@ -184,7 +196,8 @@ TEST_F(GateLine, ValidLineAddsGate)
     EXPECT_EQ(NetName(g.in[3]), "CLR");
     EXPECT_EQ(NetName(g.out), "a1");
     EXPECT_EQ(nl.nets[g.out].driver, DRV_GATE);
-    EXPECT_EQ(g.delay, 2U);
+    EXPECT_EQ(g.rise, 2U);
+    EXPECT_EQ(g.fall, 2U);
 }
 
 TEST_F(GateLine, RejectsUnknownTypeAndBadCounts)

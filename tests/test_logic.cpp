@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
+
 #include "logic.h"
 
 namespace
@@ -14,38 +16,79 @@ LogicValue_t Eval2(GateType_t type, LogicValue_t a, LogicValue_t b)
     EXPECT_EQ(lg_eval(type, inputs, 2U, &out), STATUS_OK);
     return out;
 }
+
+const LogicValue_t VALUES[LV_COUNT] = {LV_0, LV_1, LV_X};
+
+/* Checks a two-input gate against an expected table, indexed [a][b] in the order 0, 1, X. */
+void ExpectTable(GateType_t type, const LogicValue_t (&expected)[LV_COUNT][LV_COUNT])
+{
+    for (uint32_t a = 0U; a < LV_COUNT; a++)
+    {
+        for (uint32_t b = 0U; b < LV_COUNT; b++)
+        {
+            EXPECT_EQ(Eval2(type, VALUES[a], VALUES[b]), expected[a][b]) << "a=" << a << " b=" << b;
+        }
+    }
+}
 }
 
 TEST(LogicAnd, MatchesTruthTable)
 {
-    EXPECT_EQ(Eval2(GT_AND, LV_0, LV_0), LV_0);
-    EXPECT_EQ(Eval2(GT_AND, LV_0, LV_1), LV_0);
-    EXPECT_EQ(Eval2(GT_AND, LV_1, LV_0), LV_0);
-    EXPECT_EQ(Eval2(GT_AND, LV_1, LV_1), LV_1);
+    const LogicValue_t expected[LV_COUNT][LV_COUNT] = {
+        {LV_0, LV_0, LV_0},
+        {LV_0, LV_1, LV_X},
+        {LV_0, LV_X, LV_X},
+    };
+    ExpectTable(GT_AND, expected);
 }
 
 TEST(LogicOr, MatchesTruthTable)
 {
-    EXPECT_EQ(Eval2(GT_OR, LV_0, LV_0), LV_0);
-    EXPECT_EQ(Eval2(GT_OR, LV_0, LV_1), LV_1);
-    EXPECT_EQ(Eval2(GT_OR, LV_1, LV_0), LV_1);
-    EXPECT_EQ(Eval2(GT_OR, LV_1, LV_1), LV_1);
+    const LogicValue_t expected[LV_COUNT][LV_COUNT] = {
+        {LV_0, LV_1, LV_X},
+        {LV_1, LV_1, LV_1},
+        {LV_X, LV_1, LV_X},
+    };
+    ExpectTable(GT_OR, expected);
+}
+
+TEST(LogicNand, ZeroDecidesEvenWithX)
+{
+    const LogicValue_t inputs[3] = {LV_1, LV_X, LV_0};
+    LogicValue_t out = SENTINEL;
+
+    ASSERT_EQ(lg_eval(GT_NAND, inputs, 3U, &out), STATUS_OK);
+    EXPECT_EQ(out, LV_1);
+}
+
+TEST(LogicNand, XWithoutZeroGivesX)
+{
+    const LogicValue_t inputs[3] = {LV_1, LV_X, LV_1};
+    LogicValue_t out = SENTINEL;
+
+    ASSERT_EQ(lg_eval(GT_NAND, inputs, 3U, &out), STATUS_OK);
+    EXPECT_EQ(out, LV_X);
 }
 
 TEST(LogicNotBuf, NotInvertsBufCopies)
 {
     const LogicValue_t in_0[1] = {LV_0};
     const LogicValue_t in_1[1] = {LV_1};
+    const LogicValue_t in_x[1] = {LV_X};
     LogicValue_t out = SENTINEL;
 
     ASSERT_EQ(lg_eval(GT_NOT, in_0, 1U, &out), STATUS_OK);
     EXPECT_EQ(out, LV_1);
     ASSERT_EQ(lg_eval(GT_NOT, in_1, 1U, &out), STATUS_OK);
     EXPECT_EQ(out, LV_0);
+    ASSERT_EQ(lg_eval(GT_NOT, in_x, 1U, &out), STATUS_OK);
+    EXPECT_EQ(out, LV_X);
     ASSERT_EQ(lg_eval(GT_BUF, in_0, 1U, &out), STATUS_OK);
     EXPECT_EQ(out, LV_0);
     ASSERT_EQ(lg_eval(GT_BUF, in_1, 1U, &out), STATUS_OK);
     EXPECT_EQ(out, LV_1);
+    ASSERT_EQ(lg_eval(GT_BUF, in_x, 1U, &out), STATUS_OK);
+    EXPECT_EQ(out, LV_X);
 }
 
 TEST(LogicEval, RejectsWrongInputCount)
@@ -61,7 +104,7 @@ TEST(LogicEval, RejectsWrongInputCount)
 
 TEST(LogicEval, RejectsInvalidValue)
 {
-    const LogicValue_t inputs[2] = {LV_1, 2U};
+    const LogicValue_t inputs[2] = {LV_1, 3U};
     LogicValue_t out = SENTINEL;
 
     EXPECT_EQ(lg_eval(GT_AND, inputs, 2U, &out), STATUS_BAD_ARG);
@@ -84,10 +127,12 @@ TEST(LogicType, ParsesNamesAndRejectsUnknown)
 
 TEST(LogicXor, MatchesTruthTable)
 {
-    EXPECT_EQ(Eval2(GT_XOR, LV_0, LV_0), LV_0);
-    EXPECT_EQ(Eval2(GT_XOR, LV_0, LV_1), LV_1);
-    EXPECT_EQ(Eval2(GT_XOR, LV_1, LV_0), LV_1);
-    EXPECT_EQ(Eval2(GT_XOR, LV_1, LV_1), LV_0);
+    const LogicValue_t expected[LV_COUNT][LV_COUNT] = {
+        {LV_0, LV_1, LV_X},
+        {LV_1, LV_0, LV_X},
+        {LV_X, LV_X, LV_X},
+    };
+    ExpectTable(GT_XOR, expected);
 
     const LogicValue_t inputs[4] = {LV_1, LV_1, LV_1, LV_0};
     LogicValue_t out = SENTINEL;
@@ -97,11 +142,9 @@ TEST(LogicXor, MatchesTruthTable)
 
 TEST(LogicXnor, IsNotOfXor)
 {
-    const LogicValue_t values[2] = {LV_0, LV_1};
-
-    for (LogicValue_t a : values)
+    for (LogicValue_t a : VALUES)
     {
-        for (LogicValue_t b : values)
+        for (LogicValue_t b : VALUES)
         {
             SCOPED_TRACE(testing::Message() << "a=" << int(a) << " b=" << int(b));
             const LogicValue_t xor_value = Eval2(GT_XOR, a, b);

@@ -34,15 +34,18 @@ typedef struct
     uint8_t      in_count;
     uint16_t     in[MAX_GATE_INPUTS];
     uint16_t     out;
-    uint16_t     delay;
-    LogicValue_t scheduled;
+    uint16_t     rise;
+    uint16_t     fall;
+    bool         has_pending;
+    LogicValue_t pending;
 } Gate_t;
 
 typedef struct
 {
     char       name[MAX_NAME_LEN];
     GateType_t type;
-    uint16_t   delay;
+    uint16_t   rise;
+    uint16_t   fall;
     char       out[MAX_NAME_LEN];
     uint8_t    in_count;
     char       in[MAX_GATE_INPUTS][MAX_NAME_LEN];
@@ -62,14 +65,14 @@ Status_t nl_init(Netlist_t *nl);
 /* Finds a net by name (linear search). */
 Status_t nl_find_net(const Netlist_t *nl, const char *name, uint16_t *out_index);
 
-/* Finds a net by name, or adds it at the end. A new net has no driver and the value 0. */
+/* Finds a net by name, or adds it at the end. A new net has no driver and the value X. */
 Status_t nl_find_or_add_net(Netlist_t *nl, const char *name, uint16_t *out_index);
 
 /* Declares one input net (found or added). */
 Status_t nl_add_input(Netlist_t *nl, const char *name);
 
-/* Reads a delay word "#d". */
-Status_t nl_parse_delay(const char *word, uint16_t *out_delay);
+/* Reads a delay word: "#d" (the same delay both ways) or "#r,f" (rise r, fall f). */
+Status_t nl_parse_delay(const char *word, uint16_t *out_rise, uint16_t *out_fall);
 
 /* Checks the words of a gate line and fills a GateSpec_t. */
 Status_t nl_parse_gate_words(char *const words[], uint32_t count, GateSpec_t *out_spec);

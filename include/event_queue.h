@@ -46,6 +46,9 @@ Status_t eq_find_earliest(const EventQueue_t *q, uint16_t *out_row);
 /* Removes one row: the last row is copied into the hole and count goes down by 1. */
 Status_t eq_remove(EventQueue_t *q, uint16_t row, Event_t *out_event);
 
+/* Finds the pending event of one gate (linear search over the used rows). */
+Status_t eq_find_gate_event(const EventQueue_t *q, uint16_t gate, uint16_t *out_row);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,4 @@
+# inv_risefall.net : inverter with rise delay 2 and fall delay 5
+input  A
+output Y
+gate g1 NOT #2,5  Y = A

@@ -30,7 +30,10 @@ static Status_t apply_event(SimKernel_t *k, const Event_t *event)
         case EV_GATE:
             if (event->index < k->nl->gate_count)
             {
-                set_net(k, k->nl->gates[event->index].out, event->value);
+                Gate_t *g = &k->nl->gates[event->index];
+
+                g->has_pending = false;
+                set_net(k, g->out, event->value);
             }
             else
             {
@@ -97,7 +100,46 @@ static bool has_changed_input(const SimKernel_t *k, const Gate_t *gate)
     return found;
 }
 
-/* Re-calculates one gate and schedules its new output value (transport delay). */
+/* Chooses the delay of an output change (worker of sk_gate_delay). */
+static uint16_t gate_delay(const Gate_t *gate, LogicValue_t new_value)
+{
+    uint16_t delay = gate->rise;
+
+    if (new_value == LV_0)
+    {
+        delay = gate->fall;
+    }
+    else if (new_value == LV_X)
+    {
+        delay = (gate->fall < gate->rise) ? gate->fall : gate->rise;
+    }
+    else
+    {
+        /* LV_1: the rise delay */
+    }
+    return delay;
+}
+
+/* Removes the promised output change of a gate from the event list (rule 2: cancel). */
+static Status_t cancel_pending(SimKernel_t *k, uint16_t gate)
+{
+    uint16_t row = 0U;
+    Status_t status = eq_find_gate_event(k->queue, gate, &row);
+
+    if (status == STATUS_OK)
+    {
+        Event_t removed;
+
+        status = eq_remove(k->queue, row, &removed);
+    }
+    if (status == STATUS_OK)
+    {
+        k->nl->gates[gate].has_pending = false;
+    }
+    return status;
+}
+
+/* Re-calculates one gate and applies the three rules of inertial delay. */
 static Status_t evaluate_gate(SimKernel_t *k, uint16_t gate)
 {
     Gate_t *g = &k->nl->gates[gate];
@@ -111,18 +153,28 @@ static Status_t evaluate_gate(SimKernel_t *k, uint16_t gate)
         inputs[i] = k->nl->nets[g->in[i]].value;
     }
     status = lg_eval(g->type, inputs, g->in_count, &value);
-    if ((status == STATUS_OK) && (value != g->scheduled))
+    if ((status == STATUS_OK) && (!g->has_pending || (g->pending != value)))
     {
-        if (k->now > (MAX_TIME_NS - (uint32_t)g->delay))
+        if (g->has_pending)
         {
-            status = STATUS_TIME_OVERFLOW;
+            status = cancel_pending(k, gate);
         }
-        else
+        if ((status == STATUS_OK) && (value != k->nl->nets[g->out].value))
         {
-            status = eq_add(k->queue, k->now + (uint32_t)g->delay, EV_GATE, gate, value);
-            if (status == STATUS_OK)
+            const uint32_t delay = (uint32_t)gate_delay(g, value);
+
+            if (k->now > (MAX_TIME_NS - delay))
             {
-                g->scheduled = value;
+                status = STATUS_TIME_OVERFLOW;
+            }
+            else
+            {
+                status = eq_add(k->queue, k->now + delay, EV_GATE, gate, value);
+                if (status == STATUS_OK)
+                {
+                    g->has_pending = true;
+                    g->pending = value;
+                }
             }
         }
     }
@@ -185,11 +237,11 @@ Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t en
 
         for (i = 0U; i < (uint32_t)nl->net_count; i++)
         {
-            nl->nets[i].value = LV_0;
+            nl->nets[i].value = LV_X;
         }
         for (i = 0U; i < (uint32_t)nl->gate_count; i++)
         {
-            nl->gates[i].scheduled = LV_0;
+            nl->gates[i].has_pending = false;
         }
         for (i = 0U; i < MAX_NETS; i++)
         {
@@ -204,6 +256,25 @@ Status_t sk_init(SimKernel_t *k, Netlist_t *nl, EventQueue_t *queue, uint32_t en
         k->now = 0U;
         k->events_applied = 0U;
         k->changed_count = 0U;
+    }
+    return status;
+}
+
+Status_t sk_gate_delay(const Gate_t *gate, LogicValue_t new_value, uint16_t *out_delay)
+{
+    Status_t status = STATUS_OK;
+
+    if ((gate == NULL) || (out_delay == NULL))
+    {
+        status = STATUS_NULL_ARG;
+    }
+    else if (new_value >= LV_COUNT)
+    {
+        status = STATUS_BAD_ARG;
+    }
+    else
+    {
+        *out_delay = gate_delay(gate, new_value);
     }
     return status;
 }

@@ -12,7 +12,7 @@ typedef struct
     GateType_t  type;
 } GateTypeName_t;
 
-/* Tells whether every input value is LV_0 or LV_1. */
+/* Tells whether every input value is LV_0, LV_1 or LV_X. */
 static bool values_are_valid(const LogicValue_t inputs[], uint32_t count)
 {
     bool valid = true;
@@ -55,7 +55,7 @@ Status_t lg_check_input_count(GateType_t type, uint32_t count)
     return status;
 }
 
-/* Combines the inputs one by one through a 2 x 2 table. */
+/* Combines the inputs one by one through a 3 x 3 table. */
 static LogicValue_t combine_inputs(const LogicValue_t table[LV_COUNT][LV_COUNT],
                                    const LogicValue_t inputs[], uint32_t count)
 {
@@ -73,20 +73,23 @@ Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, L
 {
     static const LogicValue_t AND_TABLE[LV_COUNT][LV_COUNT] =
     {
-        { LV_0, LV_0 },
-        { LV_0, LV_1 }
+        { LV_0, LV_0, LV_0 },
+        { LV_0, LV_1, LV_X },
+        { LV_0, LV_X, LV_X }
     };
     static const LogicValue_t OR_TABLE[LV_COUNT][LV_COUNT] =
     {
-        { LV_0, LV_1 },
-        { LV_1, LV_1 }
+        { LV_0, LV_1, LV_X },
+        { LV_1, LV_1, LV_1 },
+        { LV_X, LV_1, LV_X }
     };
     static const LogicValue_t XOR_TABLE[LV_COUNT][LV_COUNT] =
     {
-        { LV_0, LV_1 },
-        { LV_1, LV_0 }
+        { LV_0, LV_1, LV_X },
+        { LV_1, LV_0, LV_X },
+        { LV_X, LV_X, LV_X }
     };
-    static const LogicValue_t NOT_TABLE[LV_COUNT] = { LV_1, LV_0 };
+    static const LogicValue_t NOT_TABLE[LV_COUNT] = { LV_1, LV_0, LV_X };
     Status_t status = STATUS_OK;
 
     if ((inputs == NULL) || (out_value == NULL))
@@ -195,6 +198,10 @@ Status_t lg_value_from_text(const char *text, LogicValue_t *out_value)
     {
         *out_value = LV_1;
     }
+    else if (strcmp(text, "x") == 0)
+    {
+        *out_value = LV_X;
+    }
     else
     {
         status = STATUS_BAD_NUMBER;
@@ -204,7 +211,7 @@ Status_t lg_value_from_text(const char *text, LogicValue_t *out_value)
 
 char lg_value_char(LogicValue_t value)
 {
-    static const char VALUE_CHARS[LV_COUNT] = { '0', '1' };
+    static const char VALUE_CHARS[LV_COUNT] = { '0', '1', 'x' };
     char shown = '?';
 
     if (value < LV_COUNT)

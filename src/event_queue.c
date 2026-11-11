@@ -104,3 +104,25 @@ Status_t eq_remove(EventQueue_t *q, uint16_t row, Event_t *out_event)
     }
     return status;
 }
+
+Status_t eq_find_gate_event(const EventQueue_t *q, uint16_t gate, uint16_t *out_row)
+{
+    Status_t status = STATUS_NULL_ARG;
+
+    if ((q != NULL) && (out_row != NULL))
+    {
+        uint32_t i = 0U;
+
+        status = STATUS_NOT_FOUND;
+        while ((i < (uint32_t)q->count) && (status != STATUS_OK))
+        {
+            if ((q->rows[i].kind == EV_GATE) && (q->rows[i].index == gate))
+            {
+                *out_row = (uint16_t)i;
+                status = STATUS_OK;
+            }
+            i++;
+        }
+    }
+    return status;
+}

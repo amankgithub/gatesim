@@ -1,4 +1,4 @@
-# inv_pulse.net : one inverter with delay 3
+# inv_pulse.net : one inverter with delay 3 (inertial delay demo)
 input  A
 output Y
 gate g1 NOT #3  Y = A

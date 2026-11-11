@@ -1,0 +1,9 @@
+# inv_risefall.stim : pulses of width 3, 4, 6 at 10, 20, 30
+set A 0 @0
+set A 1 @10
+set A 0 @13
+set A 1 @20
+set A 0 @24
+set A 1 @30
+set A 0 @36
+end 50
