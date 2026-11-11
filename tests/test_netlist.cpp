@@ -1,6 +1,6 @@
 /**
  * @file    test_netlist.cpp
- * @brief   Unit tests for netlist.
+ * @brief   Unit tests for netlist (UT-33..UT-54).
  */
 #include <gtest/gtest.h>
 
@@ -146,6 +146,7 @@ class Library : public NetlistTest
 {
 };
 
+/* UT-33 FR-01 Positive */
 TEST_F(FindOrAdd, ReturnsExistingIndex)
 {
     uint16_t index = SENTINEL;
@@ -156,6 +157,7 @@ TEST_F(FindOrAdd, ReturnsExistingIndex)
     EXPECT_EQ(nl.net_count, 4U);
 }
 
+/* UT-34 FR-01 Positive */
 TEST_F(FindOrAdd, AddsNewNetAtEnd)
 {
     uint16_t index = SENTINEL;
@@ -170,6 +172,7 @@ TEST_F(FindOrAdd, AddsNewNetAtEnd)
     EXPECT_EQ(nl.nets[4].value, LV_X);
 }
 
+/* UT-35 FR-02 Boundary */
 TEST_F(FindOrAdd, RejectsWhenTableFull)
 {
     uint16_t index = SENTINEL;
@@ -205,6 +208,7 @@ TEST_F(FindOrAdd, RejectsWhenTableFull)
     EXPECT_EQ(nl.gate_count, 1U);
 }
 
+/* UT-36 FR-01 Positive */
 TEST_F(FindOrAdd, VccAndGndAreConstants)
 {
     uint16_t vcc = SENTINEL;
@@ -226,6 +230,7 @@ TEST_F(FindOrAdd, VccAndGndAreConstants)
     EXPECT_EQ(nl.nets[other].driver, DRV_NONE);
 }
 
+/* UT-37 FR-01 Boundary */
 TEST(ParseDelay, SingleAndRiseFall)
 {
     uint16_t rise = SENTINEL;
@@ -245,6 +250,7 @@ TEST(ParseDelay, SingleAndRiseFall)
     EXPECT_EQ(fall, 1000U);
 }
 
+/* UT-38 FR-01 Negative */
 TEST(ParseDelay, RejectsBadDelays)
 {
     const char *const bad[] = {"#0", "#1001", "#a", "#2,", "#2,0", "#,5", "#2,5,6"};
@@ -265,6 +271,7 @@ TEST(ParseDelay, RejectsBadDelays)
     EXPECT_EQ(fall, SENTINEL);
 }
 
+/* UT-39 FR-01 Positive */
 TEST_F(GateLine, ValidLineAddsGate)
 {
     ASSERT_EQ(Parse("gate m1 NAND #2  a1 = J CLK QN CLR"), STATUS_OK);
@@ -284,6 +291,7 @@ TEST_F(GateLine, ValidLineAddsGate)
     EXPECT_EQ(g.fall, 2U);
 }
 
+/* UT-40 FR-02 Negative */
 TEST_F(GateLine, RejectsUnknownTypeAndBadCounts)
 {
     EXPECT_EQ(Parse("gate g1 NAN #2 y = a b"), STATUS_UNKNOWN_TYPE);
@@ -294,6 +302,7 @@ TEST_F(GateLine, RejectsUnknownTypeAndBadCounts)
     EXPECT_EQ(nl.gate_count, 0U);
 }
 
+/* UT-41 FR-02 Negative */
 TEST_F(GateLine, RejectsDuplicateNameAndSecondDriver)
 {
     LoadSrLatch();
@@ -316,6 +325,7 @@ TEST_F(GateLine, RejectsDuplicateNameAndSecondDriver)
     EXPECT_EQ(nl.output_count, 2U);
 }
 
+/* UT-42 FR-01 Positive */
 TEST_F(ParseLine, SrLatchTablesAsExpected)
 {
     const char *const net_names[] = {"S", "R", "Q", "QN"};
@@ -337,6 +347,7 @@ TEST_F(ParseLine, SrLatchTablesAsExpected)
     EXPECT_EQ(nl.gates[1].out, 3U);
 }
 
+/* UT-43 FR-10 Negative */
 TEST_F(ParseLine, RejectsUnknownKeyword)
 {
     EXPECT_EQ(Parse("wire a"), STATUS_UNKNOWN_KEYWORD);
@@ -344,6 +355,7 @@ TEST_F(ParseLine, RejectsUnknownKeyword)
     EXPECT_EQ(nl.net_count, 0U);
 }
 
+/* UT-44 FR-01, FR-09 Positive */
 TEST_F(LoadNetlist, Ring5FromFile)
 {
     diag.line = SENTINEL;
@@ -358,6 +370,7 @@ TEST_F(LoadNetlist, Ring5FromFile)
     EXPECT_EQ(nl.gates[0].type, GT_NAND);
 }
 
+/* UT-45 FR-10 Negative */
 TEST_F(LoadNetlist, ErrorHasFileAndLine)
 {
     EXPECT_EQ(nl_load(&nl, "tests/data/bad_type.net", &diag), STATUS_UNKNOWN_TYPE);
@@ -372,6 +385,7 @@ TEST_F(LoadNetlist, ErrorHasFileAndLine)
     EXPECT_STREQ(diag.text, "cannot open file");
 }
 
+/* UT-46 FR-02 Negative */
 TEST_F(CheckNetlist, RejectsUndrivenNet)
 {
     /* g1 reads b, but no input line and no gate drives it */
@@ -381,6 +395,7 @@ TEST_F(CheckNetlist, RejectsUndrivenNet)
     EXPECT_NE(std::string(diag.text).find("'b'"), std::string::npos) << diag.text;
 }
 
+/* UT-47 FR-02 Positive */
 TEST_F(CheckNetlist, WarnsUnusedGateOutput)
 {
     /* g2 drives t, which no gate reads and which is not an output */
@@ -389,6 +404,7 @@ TEST_F(CheckNetlist, WarnsUnusedGateOutput)
     EXPECT_EQ(NetName(nl.unused[0]), "t");
 }
 
+/* UT-48 FR-03 Positive */
 TEST_F(Block, StoresPortsAndGates)
 {
     const char *const ports[] = {"J", "K", "CLK", "PRE", "CLR", "Q", "QN"};
@@ -425,6 +441,7 @@ TEST_F(Block, StoresPortsAndGates)
     EXPECT_EQ(found, 0U);
 }
 
+/* UT-49 FR-03 Positive */
 TEST_F(Inst, ExpandsNamesWithPrefix)
 {
     LoadJkMsBlock();
@@ -467,6 +484,7 @@ TEST_F(Inst, ExpandsNamesWithPrefix)
     EXPECT_EQ(nl_find_net(&nl, "P1.VCC", &index), STATUS_NOT_FOUND);
 }
 
+/* UT-50 FR-03 Negative */
 TEST_F(Inst, RejectsBadPorts)
 {
     LoadJkMsBlock();
@@ -486,6 +504,7 @@ TEST_F(Inst, RejectsBadPorts)
     EXPECT_EQ(nl.inst_count, 0U);
 }
 
+/* UT-51 FR-03 Negative */
 TEST_F(Subckt, RejectsNestingAndUnclosedBlock)
 {
     ASSERT_EQ(Parse("subckt INV A -> Y"), STATUS_OK);
@@ -507,6 +526,7 @@ TEST_F(Subckt, RejectsNestingAndUnclosedBlock)
     EXPECT_STREQ(diag.text, "not allowed here 'subckt INV not closed'");
 }
 
+/* UT-52 FR-03 Positive */
 TEST_F(Include, LoadsLibraryRelativeToFile)
 {
     /* data/jk_ms.net has "include ../lib/flipflops.net": relative to data/, not to the working folder */
@@ -520,6 +540,7 @@ TEST_F(Include, LoadsLibraryRelativeToFile)
     EXPECT_EQ(nl.nets[index].driver, DRV_GATE);
 }
 
+/* UT-53 FR-03 Negative */
 TEST_F(Include, RejectsNestedInclude)
 {
     /* nested_include.net includes include_again.net, whose line 2 is another include */
@@ -529,6 +550,7 @@ TEST_F(Include, RejectsNestedInclude)
     EXPECT_STREQ(diag.text, "not allowed here 'include'");
 }
 
+/* UT-54 FR-03 Positive */
 TEST_F(Library, CounterAndAdderSizes)
 {
     /* the 0-3-5-7 counter: 3 x 9 gates + K0, and VCC created on first mention */

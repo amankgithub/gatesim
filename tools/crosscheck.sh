@@ -8,7 +8,7 @@
 # 2 usage error or iverilog/vvp/python3 missing.
 # POSIX sh only (make runs it with sh, which is dash on Ubuntu): no arrays, no [[ ]].
 
-GATESIM=${1:-build/gatesim}
+GATESIM=${1:-build/release/gatesim}
 OUT_ROOT=build/crosscheck
 
 PAIRS="inv_pulse:inv_pulse

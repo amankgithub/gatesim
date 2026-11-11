@@ -42,6 +42,6 @@
 #define VCD_CODE_COUNT      94U      /* '!' .. '~': one-character codes; two characters cover all MAX_NETS */
 #define DEFAULT_OUT_DIR     "output" /* folder of the output files, relative to where the program runs */
 #define VCD_FILE_NAME       "waves.vcd"   /* the waveform file in the output folder */
-#define GATESIM_VERSION     "0.5"    /* in the VCD $version line (program version) */
+#define GATESIM_VERSION     "1.0"    /* in the VCD $version line (program version) */
 
 #endif /* CONFIG_H */

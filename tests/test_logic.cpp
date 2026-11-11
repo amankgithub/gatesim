@@ -1,6 +1,6 @@
 /**
  * @file    test_logic.cpp
- * @brief   Unit tests for logic.
+ * @brief   Unit tests for logic (UT-23..UT-32).
  * @details Covers the full 3 x 3 tables of AND, OR and XOR (0, 1 and X on each input), NAND with and
  *          without a deciding 0, NOT and BUF on every value, XNOR as NOT of XOR, the wrong input counts
  *          and an invalid value, and the gate type names both ways. No fixture: the helpers Eval2 and
@@ -42,6 +42,7 @@ void ExpectTable(GateType_t type, const LogicValue_t (&expected)[LV_COUNT][LV_CO
 }
 }  // namespace
 
+/* UT-23 FR-06 Positive */
 TEST(LogicAnd, MatchesTruthTable)
 {
     const LogicValue_t expected[LV_COUNT][LV_COUNT] = {
@@ -52,6 +53,7 @@ TEST(LogicAnd, MatchesTruthTable)
     ExpectTable(GT_AND, expected);
 }
 
+/* UT-24 FR-06 Positive */
 TEST(LogicOr, MatchesTruthTable)
 {
     const LogicValue_t expected[LV_COUNT][LV_COUNT] = {
@@ -62,6 +64,7 @@ TEST(LogicOr, MatchesTruthTable)
     ExpectTable(GT_OR, expected);
 }
 
+/* UT-25 FR-06 Positive */
 TEST(LogicNand, ZeroDecidesEvenWithX)
 {
     /* the 0 decides the AND, so the X does not matter */
@@ -72,6 +75,7 @@ TEST(LogicNand, ZeroDecidesEvenWithX)
     EXPECT_EQ(out, LV_1);
 }
 
+/* UT-26 FR-06 Positive */
 TEST(LogicNand, XWithoutZeroGivesX)
 {
     const LogicValue_t inputs[3] = {LV_1, LV_X, LV_1};
@@ -81,6 +85,7 @@ TEST(LogicNand, XWithoutZeroGivesX)
     EXPECT_EQ(out, LV_X);
 }
 
+/* UT-27 FR-06 Positive */
 TEST(LogicNotBuf, NotInvertsBufCopies)
 {
     const LogicValue_t in_0[1] = {LV_0};
@@ -102,6 +107,7 @@ TEST(LogicNotBuf, NotInvertsBufCopies)
     EXPECT_EQ(out, LV_X);
 }
 
+/* UT-28 FR-02, FR-06 Negative */
 TEST(LogicEval, RejectsWrongInputCount)
 {
     const LogicValue_t inputs[5] = {LV_1, LV_1, LV_1, LV_1, LV_1};
@@ -113,6 +119,7 @@ TEST(LogicEval, RejectsWrongInputCount)
     EXPECT_EQ(out, SENTINEL);
 }
 
+/* UT-29 FR-06 Negative */
 TEST(LogicEval, RejectsInvalidValue)
 {
     const LogicValue_t inputs[2] = {LV_1, 3U};   /* 2 is X, 3 is no value */
@@ -122,6 +129,7 @@ TEST(LogicEval, RejectsInvalidValue)
     EXPECT_EQ(out, SENTINEL);
 }
 
+/* UT-30 FR-01 Positive + Negative */
 TEST(LogicType, ParsesNamesAndRejectsUnknown)
 {
     GateType_t type = GT_AND;
@@ -146,6 +154,7 @@ TEST(LogicType, ParsesNamesAndRejectsUnknown)
     EXPECT_STREQ(lg_type_name(GT_COUNT), "?");
 }
 
+/* UT-31 FR-06 Positive */
 TEST(LogicXor, MatchesTruthTable)
 {
     /* no deciding value: any X gives X */
@@ -163,6 +172,7 @@ TEST(LogicXor, MatchesTruthTable)
     EXPECT_EQ(out, LV_1);
 }
 
+/* UT-32 FR-06 Positive */
 TEST(LogicXnor, IsNotOfXor)
 {
     for (LogicValue_t a : VALUES)

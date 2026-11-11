@@ -1,6 +1,6 @@
 /**
  * @file    test_status.cpp
- * @brief   Unit tests for status.
+ * @brief   Unit tests for status (UT-01..UT-03).
  */
 #include <gtest/gtest.h>
 
@@ -9,11 +9,13 @@
 
 #include "status.h"
 
+/* UT-01 FR-10 Positive */
 TEST(StatusText, OkHasText)
 {
     EXPECT_STREQ(status_text(STATUS_OK), "ok");
 }
 
+/* UT-02 FR-10 Positive */
 TEST(StatusText, EveryCodeHasDistinctText)
 {
     for (int i = 0; i < static_cast<int>(STATUS_COUNT); i++)
@@ -30,6 +32,7 @@ TEST(StatusText, EveryCodeHasDistinctText)
     }
 }
 
+/* UT-03 FR-10 Boundary */
 TEST(StatusText, OutOfRangeGivesUnknown)
 {
     EXPECT_STREQ(status_text(STATUS_COUNT), "unknown status");

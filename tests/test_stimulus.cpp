@@ -1,6 +1,6 @@
 /**
  * @file    test_stimulus.cpp
- * @brief   Unit tests for stimulus.
+ * @brief   Unit tests for stimulus (UT-71..UT-75).
  */
 #include <gtest/gtest.h>
 
@@ -68,6 +68,7 @@ class StimClock : public StimulusTest
 {
 };
 
+/* UT-71 FR-04 Positive + Negative */
 TEST_F(StimSet, ParsesAndRejects)
 {
     LoadNet("data/sr_nor.net");
@@ -87,6 +88,7 @@ TEST_F(StimSet, ParsesAndRejects)
     EXPECT_EQ(st.set_count, 1U);                           /* a bad line adds nothing */
 }
 
+/* UT-72 FR-04 Negative */
 TEST_F(StimEnd, RequiredExactlyOnce)
 {
     /* a file without an end line: the message names the file, line 0 */
@@ -106,6 +108,7 @@ TEST_F(StimEnd, RequiredExactlyOnce)
     EXPECT_EQ(st.end_time, 80U);
 }
 
+/* UT-73 FR-04 Boundary */
 TEST_F(StimSeed, SkipsEventsAfterEnd)
 {
     /* the set lines of data/inv_pulse.stim, but with end 30 */
@@ -125,6 +128,7 @@ TEST_F(StimSeed, SkipsEventsAfterEnd)
     EXPECT_EQ(queue.rows[5].value, LV_1);
 }
 
+/* UT-74 FR-05 Negative */
 TEST_F(StimClock, ParsesAndRejects)
 {
     /* jk_level.net: inputs J K CLK PRE_N CLR_N (nets 0..4) */
@@ -183,6 +187,7 @@ TEST_F(StimClock, ParsesAndRejects)
     EXPECT_EQ(clock, SENTINEL);
 }
 
+/* UT-75 FR-05 Boundary */
 TEST_F(StimClock, ExpandGivesEdgeChain)
 {
     LoadNet("data/jk_level.net");

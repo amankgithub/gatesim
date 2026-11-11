@@ -75,7 +75,8 @@ def main():
     parser = argparse.ArgumentParser(description="draw a GateSim waveform as a picture")
     parser.add_argument("vcd")
     parser.add_argument("nets", nargs="*", help="nets to draw (default: all)")
-    parser.add_argument("--number", nargs="+", default=[], metavar="NET", help="add these nets read as one binary number")
+    parser.add_argument("--number", nargs="+", default=[], metavar="NET",
+                        help="add these nets read as one binary number")
     parser.add_argument("-o", dest="png", default=None, help="picture file (default: VCD name with .png)")
     args = parser.parse_args()   # a usage error exits with 2
     code = 0

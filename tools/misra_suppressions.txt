@@ -1,4 +1,4 @@
-# cppcheck suppressions for "make check" (MISRA C:2012 deviations)
+# cppcheck suppressions for "make check": the MISRA C:2012 Rule 21.6 deviation recorded in docs/misra_deviations.md
 # Rule 21.6: stdio is used only where the program reads its input files and writes its output.
 # report.c uses stdio through report.h, so cppcheck reports the include there.
 misra-c2012-21.6:src/main.c

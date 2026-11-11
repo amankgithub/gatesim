@@ -1,6 +1,6 @@
 /**
  * @file    test_text_utils.cpp
- * @brief   Unit tests for text_utils.
+ * @brief   Unit tests for text_utils (UT-04..UT-22).
  * @details Covers the comment cut ('#' versus a "#2" delay word), the word split, the checked number,
  *          the name check, the line reader (line numbers, CRLF, a line that is too long, a missing file)
  *          with the small files in tests/data/, the error message, and the three path and PORT=NET
@@ -23,6 +23,7 @@ namespace
 constexpr uint32_t SENTINEL = 77U;
 }  // namespace
 
+/* UT-04 FR-01 Positive */
 TEST(CutComment, RemovesTrailingComment)
 {
     char line[] = "set A 1 @0   # pulse";
@@ -31,6 +32,7 @@ TEST(CutComment, RemovesTrailingComment)
     EXPECT_STREQ(line, "set A 1 @0   ");
 }
 
+/* UT-05 FR-01 Positive */
 TEST(CutComment, KeepsDelayWord)
 {
     char gate_line[] = "gate g1 NOT #3 Y = A # inv";
@@ -45,6 +47,7 @@ TEST(CutComment, KeepsDelayWord)
     EXPECT_STREQ(letter_after, "a ");
 }
 
+/* UT-06 FR-01 Positive */
 TEST(CutComment, WholeLineComment)
 {
     char line[] = "   # title";
@@ -53,6 +56,7 @@ TEST(CutComment, WholeLineComment)
     EXPECT_STREQ(line, "   ");
 }
 
+/* UT-07 FR-01 Positive */
 TEST(SplitWords, SplitsOnSpacesAndTabs)
 {
     char line[] = "gate  m1\tNAND #2";
@@ -67,6 +71,7 @@ TEST(SplitWords, SplitsOnSpacesAndTabs)
     EXPECT_STREQ(words[3], "#2");
 }
 
+/* UT-08 FR-01 Boundary */
 TEST(SplitWords, EmptyLineHasNoWords)
 {
     char empty[] = "";
@@ -81,6 +86,7 @@ TEST(SplitWords, EmptyLineHasNoWords)
     EXPECT_EQ(count, 0U);
 }
 
+/* UT-09 FR-01 Boundary */
 TEST(SplitWords, RejectsTooManyWords)
 {
     char line[] = "a b c d";
@@ -92,6 +98,7 @@ TEST(SplitWords, RejectsTooManyWords)
     EXPECT_STREQ(line, "a b c d");
 }
 
+/* UT-10 FR-01, FR-04 Boundary */
 TEST(ParseU32, AcceptsRangeAndBoundaries)
 {
     uint32_t value = SENTINEL;
@@ -104,6 +111,7 @@ TEST(ParseU32, AcceptsRangeAndBoundaries)
     EXPECT_EQ(value, 1000U);
 }
 
+/* UT-11 FR-01, FR-04 Negative */
 TEST(ParseU32, RejectsNonDigits)
 {
     const char *const bad[] = {"12a", "-1", " 5", "", "+3"};
@@ -117,6 +125,7 @@ TEST(ParseU32, RejectsNonDigits)
     }
 }
 
+/* UT-12 FR-01, FR-04 Boundary */
 TEST(ParseU32, RejectsOutOfRange)
 {
     uint32_t value = SENTINEL;
@@ -130,6 +139,7 @@ TEST(ParseU32, RejectsOutOfRange)
     EXPECT_EQ(value, SENTINEL);
 }
 
+/* UT-13 FR-01 Positive */
 TEST(CheckName, AcceptsLettersDigitsUnderscoreDot)
 {
     const std::string longest(MAX_NAME_LEN - 1U, 'a');
@@ -140,6 +150,7 @@ TEST(CheckName, AcceptsLettersDigitsUnderscoreDot)
     EXPECT_EQ(tu_check_name(longest.c_str()), STATUS_OK);
 }
 
+/* UT-14 FR-01 Negative */
 TEST(CheckName, RejectsBadNames)
 {
     const std::string too_long(MAX_NAME_LEN, 'a');
@@ -153,6 +164,7 @@ TEST(CheckName, RejectsBadNames)
     EXPECT_EQ(tu_check_name(".a"), STATUS_BAD_NAME);
 }
 
+/* UT-15 FR-01 Positive */
 TEST(ReadLine, ReadsLinesAndCountsThem)
 {
     const char *const expected[] = {"first line", "second line with words", "", "fourth line after a blank one"};
@@ -173,6 +185,7 @@ TEST(ReadLine, ReadsLinesAndCountsThem)
     EXPECT_EQ(tu_close(&reader), STATUS_OK);
 }
 
+/* UT-16 FR-01 Positive */
 TEST(ReadLine, StripsCarriageReturn)
 {
     /* Guard: the data file must really end its lines with \r\n (Git must not convert it). */
@@ -192,6 +205,7 @@ TEST(ReadLine, StripsCarriageReturn)
     EXPECT_EQ(tu_close(&reader), STATUS_OK);
 }
 
+/* UT-17 FR-01, FR-10 Boundary */
 TEST(ReadLine, RejectsTooLongLine)
 {
     LineReader_t reader;
@@ -207,6 +221,7 @@ TEST(ReadLine, RejectsTooLongLine)
     EXPECT_EQ(reader.fp, nullptr);
 }
 
+/* UT-18 FR-10 Negative */
 TEST(OpenFile, MissingFileFails)
 {
     LineReader_t reader;
@@ -224,6 +239,7 @@ TEST(OpenFile, MissingFileFails)
     EXPECT_EQ(reader.line_no, SENTINEL);
 }
 
+/* UT-19 FR-10 Positive */
 TEST(SetDiag, FormatsWhatAndName)
 {
     Diag_t diag = {};
@@ -245,6 +261,7 @@ TEST(SetDiag, FormatsWhatAndName)
     EXPECT_STREQ(diag.text, "missing end line");
 }
 
+/* UT-20 FR-08 Positive + Negative */
 TEST(JoinDir, AddsSlash)
 {
     char path[MAX_PATH_LEN] = "unchanged";
@@ -260,6 +277,7 @@ TEST(JoinDir, AddsSlash)
     EXPECT_STREQ(path, "output/waves.vcd");
 }
 
+/* UT-21 FR-03 Positive + Negative */
 TEST(SplitAssign, SplitsPortAndNet)
 {
     char word[] = "J=Q1";
@@ -287,6 +305,7 @@ TEST(SplitAssign, SplitsPortAndNet)
     }
 }
 
+/* UT-22 FR-03 Positive */
 TEST(JoinPath, UsesDirectoryOfBaseFile)
 {
     char path[MAX_PATH_LEN] = "unchanged";

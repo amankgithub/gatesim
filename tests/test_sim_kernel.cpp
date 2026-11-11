@@ -1,6 +1,6 @@
 /**
  * @file    test_sim_kernel.cpp
- * @brief   Unit tests for sim_kernel.
+ * @brief   Unit tests for sim_kernel (UT-61..UT-70).
  * @details Load reads a netlist and empties the event list; Seed (a stimulus file), SeedLines (stimulus lines
  *          read with st_parse_line) or AddSets (single EV_SET events) add the events. RunToEnd prepares the
  *          run with sk_init, runs sk_run with the stimulus as the source of clock edges (st_expand)
@@ -174,6 +174,7 @@ EventQueue_t Kernel::queue;
 SimKernel_t Kernel::k;
 Stimulus_t Kernel::st;
 
+/* UT-61 FR-06 Positive */
 TEST_F(Kernel, InertialExampleMatchesTrace)
 {
     /* A changes at 0, 20, 22, 30, 34 on an inverter with delay 3 */
@@ -194,6 +195,7 @@ TEST_F(Kernel, InertialExampleMatchesTrace)
     EXPECT_EQ(changes[0].new_value, LV_1);
 }
 
+/* UT-62 FR-06 Boundary */
 TEST_F(Kernel, PulsesNarrowerThanDelaySwallowed)
 {
     /* pulses of width 1, 2, 3, 4 at 10, 20, 30, 40; end 60: only those of width 3 and 4 pass */
@@ -206,6 +208,7 @@ TEST_F(Kernel, PulsesNarrowerThanDelaySwallowed)
     EXPECT_EQ(result.events_applied, 14U);
 }
 
+/* UT-63 FR-06 Positive */
 TEST_F(Kernel, RiseFallDelaysShapePulse)
 {
     /* inverter #2,5: pulses of width 3, 4, 6 at 10, 20, 30; Y falls 5 ns after A rises, rises 2 ns after A falls */
@@ -229,6 +232,7 @@ TEST_F(Kernel, RiseFallDelaysShapePulse)
     EXPECT_EQ(delay, 2U);
 }
 
+/* UT-64 FR-06, FR-07 Positive */
 TEST_F(Kernel, SrLatchMatchesTrace)
 {
     /* reset, set, then S = R = 1 released together at 50: Q and QN oscillate with period 4 */
@@ -240,6 +244,7 @@ TEST_F(Kernel, SrLatchMatchesTrace)
     EXPECT_EQ(result.stop_time, 80U);
 }
 
+/* UT-65 FR-06, FR-07 Positive */
 TEST_F(Kernel, SkewedReleaseSettlesInReset)
 {
     /* R is released 1 ns after S: R still holds Q at 0, so QN rises once and the latch is stable */
@@ -256,6 +261,7 @@ TEST_F(Kernel, SkewedReleaseSettlesInReset)
     EXPECT_EQ(result.stop_time, 52U);
 }
 
+/* UT-66 FR-06, FR-07 Positive */
 TEST_F(Kernel, RingPeriodIsTwenty)
 {
     /* EN 0 at 0, 1 at 10; end 100 */
@@ -278,6 +284,7 @@ TEST_F(Kernel, RingPeriodIsTwenty)
     EXPECT_EQ(result.events_applied, 52U);
 }
 
+/* UT-67 FR-06 Positive */
 TEST_F(Kernel, RaceAroundPeriodEight)
 {
     /* J = K = 1, cleared at 0..5, CLK high from 20 to 40: Q toggles every 2 + 2 + 2 + 2 ns while CLK is high */
@@ -298,6 +305,7 @@ TEST_F(Kernel, RaceAroundPeriodEight)
     EXPECT_EQ(result.reason, STOP_QUEUE_EMPTY);
 }
 
+/* UT-68 FR-05, FR-06 Positive */
 TEST_F(Kernel, ClockLineDrivesRaceAround)
 {
     /* the same run as RaceAroundPeriodEight, but CLK comes from "clock CLK period 40 high 20 start 20" (end 50) */
@@ -316,6 +324,7 @@ TEST_F(Kernel, ClockLineDrivesRaceAround)
     EXPECT_EQ(result.events_applied, 32U);
 }
 
+/* UT-69 FR-05, FR-06, FR-07 Boundary */
 TEST_F(Kernel, NarrowPulseLeavesLatchUndecided)
 {
     /* preset to Q = 1, then one clock pulse only 2 ns wide at 60: both NAND inputs see it, and the
@@ -331,6 +340,7 @@ TEST_F(Kernel, NarrowPulseLeavesLatchUndecided)
     EXPECT_EQ(result.events_applied, 41U);
 }
 
+/* UT-70 FR-03, FR-06 Positive */
 TEST_F(Kernel, MasterSlaveTogglesOncePerClock)
 {
     /* the library's JK_MS with J = K = 1: Q toggles once per clock, when CLK falls (no race-around) */

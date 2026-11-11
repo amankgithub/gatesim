@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="850" viewBox="0 0 980 850"
+    font-family="DejaVu Sans, Arial, Helvetica, sans-serif">
+  <title>GateSim architecture</title>
+  <desc>Layers of GateSim: command line, input layer, core, listener and output, with the shared status and config
+    modules, and the viewing and cross-check tools outside the program. Solid arrows are function calls, dashed
+    arrows are callbacks, grey arrows are file data.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8"
+        orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#333333"/>
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8"
+        orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#888888"/>
+    </marker>
+  </defs>
+
+  <!-- background, so the diagram stays readable on a dark page -->
+  <rect x="0" y="0" width="980" height="850" fill="#ffffff"/>
+
+  <!-- user, command line, exit code -->
+  <rect x="30" y="40" width="150" height="50" rx="8" fill="#ffffff" stroke="#444444" stroke-width="1.5"/>
+  <text x="105" y="70" font-size="14" text-anchor="middle">user (student)</text>
+
+  <rect x="250" y="30" width="460" height="70" rx="8" fill="#f2f2f2" stroke="#444444" stroke-width="1.5"/>
+  <text x="480" y="60" font-size="16" font-weight="bold" text-anchor="middle">main.c</text>
+  <text x="480" y="82" font-size="12" text-anchor="middle">command line and high-level flow only</text>
+
+  <rect x="790" y="40" width="160" height="50" rx="8" fill="#ffffff" stroke="#444444" stroke-width="1.5"/>
+  <text x="870" y="70" font-size="13" text-anchor="middle">exit code 0 / 2 / 3</text>
+
+  <line x1="180" y1="65" x2="248" y2="65" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="214" y="57" font-size="10" text-anchor="middle">gatesim</text>
+  <line x1="710" y1="65" x2="788" y2="65" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- input files -->
+  <rect x="30" y="160" width="170" height="110" rx="8" fill="#ffffff" stroke="#888888" stroke-width="1.5"
+      stroke-dasharray="2 2"/>
+  <text x="115" y="183" font-size="13" font-weight="bold" text-anchor="middle">input files</text>
+  <text x="115" y="205" font-size="12" text-anchor="middle">data/*.net</text>
+  <text x="115" y="225" font-size="12" text-anchor="middle">lib/*.net (library)</text>
+  <text x="115" y="245" font-size="12" text-anchor="middle">data/*.stim</text>
+  <line x1="200" y1="215" x2="263" y2="215" stroke="#888888" stroke-width="1.5" marker-end="url(#arrow-grey)"/>
+  <text x="231" y="207" font-size="10" text-anchor="middle" fill="#555555">fgets</text>
+
+  <!-- input layer -->
+  <rect x="250" y="150" width="460" height="110" rx="10" fill="#e8f1fb" stroke="#5b8bd0" stroke-width="1.5"/>
+  <text x="258" y="168" font-size="11" font-style="italic" fill="#2f5d9e">input layer</text>
+  <rect x="265" y="190" width="135" height="50" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="332" y="211" font-size="13" font-weight="bold" text-anchor="middle">text_utils</text>
+  <text x="332" y="229" font-size="10" text-anchor="middle">lines, words, numbers</text>
+  <rect x="412" y="190" width="135" height="50" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="480" y="211" font-size="13" font-weight="bold" text-anchor="middle">netlist</text>
+  <text x="480" y="229" font-size="10" text-anchor="middle">nets, gates, blocks</text>
+  <rect x="560" y="190" width="135" height="50" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="627" y="211" font-size="13" font-weight="bold" text-anchor="middle">stimulus</text>
+  <text x="627" y="229" font-size="10" text-anchor="middle">set, clock, end</text>
+
+  <!-- tables to the core -->
+  <line x1="480" y1="260" x2="480" y2="308" stroke="#888888" stroke-width="1.5" marker-end="url(#arrow-grey)"/>
+  <text x="490" y="289" font-size="10" fill="#555555">tables and first events</text>
+
+  <!-- core -->
+  <rect x="250" y="310" width="460" height="110" rx="10" fill="#fdf0e0" stroke="#d99a3e" stroke-width="1.5"/>
+  <text x="258" y="328" font-size="11" font-style="italic" fill="#9a6418">core</text>
+  <rect x="265" y="350" width="135" height="50" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="332" y="371" font-size="13" font-weight="bold" text-anchor="middle">logic</text>
+  <text x="332" y="389" font-size="10" text-anchor="middle">0/1/X gate tables</text>
+  <rect x="412" y="350" width="135" height="50" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="480" y="371" font-size="13" font-weight="bold" text-anchor="middle">event_queue</text>
+  <text x="480" y="389" font-size="10" text-anchor="middle">array, min-finder</text>
+  <rect x="560" y="350" width="135" height="50" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="627" y="371" font-size="13" font-weight="bold" text-anchor="middle">sim_kernel</text>
+  <text x="627" y="389" font-size="10" text-anchor="middle">event loop, 3 rules</text>
+  <!-- the kernel calls the event list and the gate tables -->
+  <line x1="560" y1="375" x2="549" y2="375" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <path d="M 590 350 V 338 H 332 V 348" fill="none" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="400" y="334" font-size="10">lg_eval</text>
+
+  <!-- expansion hook: the kernel asks the stimulus for the next clock edge -->
+  <path d="M 665 350 V 242" fill="none" stroke="#333333" stroke-width="1.5" stroke-dasharray="6 4"
+      marker-end="url(#arrow)"/>
+  <text x="670" y="290" font-size="10">st_expand</text>
+  <text x="670" y="302" font-size="10">(clock edges)</text>
+
+  <!-- callbacks from the kernel to the listener -->
+  <path d="M 627 400 V 445 H 480 V 508" fill="none" stroke="#333333" stroke-width="1.5" stroke-dasharray="6 4"
+      marker-end="url(#arrow)"/>
+  <text x="490" y="461" font-size="10.5">callbacks: on_change, on_end</text>
+
+  <!-- listener -->
+  <rect x="250" y="470" width="460" height="110" rx="10" fill="#eaf6ea" stroke="#5aa05a" stroke-width="1.5"/>
+  <text x="258" y="488" font-size="11" font-style="italic" fill="#2f7a2f">listener</text>
+  <rect x="412" y="510" width="135" height="50" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="480" y="531" font-size="13" font-weight="bold" text-anchor="middle">report</text>
+  <text x="480" y="549" font-size="10" text-anchor="middle">VCD writer</text>
+
+  <!-- report to the output file -->
+  <line x1="480" y1="560" x2="480" y2="638" stroke="#888888" stroke-width="1.5" marker-end="url(#arrow-grey)"/>
+  <text x="490" y="605" font-size="10" fill="#555555">fprintf</text>
+
+  <!-- output -->
+  <rect x="250" y="640" width="460" height="80" rx="10" fill="#f3eefa" stroke="#8a6cc0" stroke-width="1.5"/>
+  <text x="258" y="658" font-size="11" font-style="italic" fill="#5e4596">output</text>
+  <text x="480" y="680" font-size="13" text-anchor="middle">output/waves.vcd (or &lt;dir&gt;/waves.vcd)</text>
+  <text x="480" y="704" font-size="12" text-anchor="middle">console: run: stopped at T ns (reason), N events</text>
+
+  <!-- viewing, outside the program -->
+  <line x1="480" y1="720" x2="480" y2="758" stroke="#888888" stroke-width="1.5" marker-end="url(#arrow-grey)"/>
+  <rect x="250" y="760" width="460" height="70" rx="10" fill="#ffffff" stroke="#888888" stroke-width="1.5"
+      stroke-dasharray="2 2"/>
+  <text x="258" y="778" font-size="11" font-style="italic" fill="#555555">viewing (outside the program)</text>
+  <text x="480" y="798" font-size="13" text-anchor="middle">GTKWave, or tools/plot.py -&gt; picture</text>
+  <text x="480" y="818" font-size="12" text-anchor="middle">the student judges the waveform</text>
+
+  <!-- calls from main.c into the layers, and its console output -->
+  <path d="M 700 100 V 120 H 750 V 690" fill="none" stroke="#333333" stroke-width="1.5"/>
+  <line x1="750" y1="215" x2="712" y2="215" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="731" y="208" font-size="10" text-anchor="middle">calls</text>
+  <line x1="750" y1="375" x2="712" y2="375" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="731" y="368" font-size="10" text-anchor="middle">calls</text>
+  <line x1="750" y1="535" x2="712" y2="535" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="731" y="528" font-size="10" text-anchor="middle">calls</text>
+  <line x1="750" y1="690" x2="712" y2="690" stroke="#888888" stroke-width="1.5" marker-end="url(#arrow-grey)"/>
+  <text x="731" y="683" font-size="10" text-anchor="middle" fill="#555555">printf</text>
+
+  <!-- shared modules -->
+  <rect x="790" y="150" width="160" height="430" rx="10" fill="#f2f2f2" stroke="#888888" stroke-width="1.5"/>
+  <text x="798" y="168" font-size="11" font-style="italic" fill="#555555">shared</text>
+  <rect x="805" y="190" width="130" height="60" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="870" y="214" font-size="13" font-weight="bold" text-anchor="middle">status</text>
+  <text x="870" y="234" font-size="10" text-anchor="middle">Status_t, Diag_t</text>
+  <rect x="805" y="270" width="130" height="60" rx="6" fill="#ffffff" stroke="#444444"/>
+  <text x="870" y="294" font-size="13" font-weight="bold" text-anchor="middle">config.h</text>
+  <text x="870" y="314" font-size="10" text-anchor="middle">limits, file names</text>
+  <text x="870" y="370" font-size="11" text-anchor="middle">used by</text>
+  <text x="870" y="386" font-size="11" text-anchor="middle">every module</text>
+  <text x="870" y="420" font-size="10" text-anchor="middle" fill="#555555">fixed tables,</text>
+  <text x="870" y="434" font-size="10" text-anchor="middle" fill="#555555">no malloc</text>
+
+  <!-- legend -->
+  <rect x="30" y="470" width="170" height="110" rx="8" fill="#ffffff" stroke="#bbbbbb"/>
+  <text x="40" y="490" font-size="12" font-weight="bold">legend</text>
+  <line x1="40" y1="512" x2="85" y2="512" stroke="#333333" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="95" y="516" font-size="11">function call</text>
+  <line x1="40" y1="537" x2="85" y2="537" stroke="#333333" stroke-width="1.5" stroke-dasharray="6 4"
+      marker-end="url(#arrow)"/>
+  <text x="95" y="541" font-size="11">callback</text>
+  <line x1="40" y1="562" x2="85" y2="562" stroke="#888888" stroke-width="1.5" marker-end="url(#arrow-grey)"/>
+  <text x="95" y="566" font-size="11">file / data</text>
+
+  <!-- cross-check tools, outside the program -->
+  <rect x="30" y="640" width="190" height="190" rx="8" fill="#ffffff" stroke="#888888" stroke-width="1.5"
+      stroke-dasharray="2 2"/>
+  <text x="125" y="662" font-size="13" font-weight="bold" text-anchor="middle">tools/ (Python, sh)</text>
+  <text x="40" y="686" font-size="11">plot.py: VCD -&gt; picture</text>
+  <text x="40" y="712" font-size="11">make crosscheck:</text>
+  <text x="50" y="730" font-size="11">net2v.py: to Verilog</text>
+  <text x="50" y="748" font-size="11">Icarus Verilog runs it</text>
+  <text x="50" y="766" font-size="11">compare_vcd.py</text>
+  <text x="50" y="784" font-size="11">crosscheck.sh: 21 pairs</text>
+  <text x="40" y="812" font-size="10" fill="#555555">misra_suppressions.txt</text>
+  <line x1="248" y1="680" x2="222" y2="680" stroke="#888888" stroke-width="1.5" marker-end="url(#arrow-grey)"/>
+</svg>

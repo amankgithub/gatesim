@@ -1,6 +1,6 @@
 /**
  * @file    test_event_queue.cpp
- * @brief   Unit tests for event_queue.
+ * @brief   Unit tests for event_queue (UT-55..UT-60).
  * @details One fixture (EventQueue) with an event list that is emptied before every test. The tests cover the
  *          min-finder (earliest time, ties broken by seq, not by row position), removal (last row into the
  *          hole), a full list, an empty list and the search for a gate's event.
@@ -31,6 +31,7 @@ protected:
 
 EventQueue_t EventQueue::q;
 
+/* UT-55 FR-06 Positive */
 TEST_F(EventQueue, EarliestByTimeExample)
 {
     /* times 34, 20, 22, 30, 3 added in this order (seq 0..4) */
@@ -49,6 +50,7 @@ TEST_F(EventQueue, EarliestByTimeExample)
     EXPECT_EQ(q.rows[row].index, 4U);
 }
 
+/* UT-56 FR-06 Boundary */
 TEST_F(EventQueue, TieBrokenBySeq)
 {
     uint16_t row = SENTINEL;
@@ -71,6 +73,7 @@ TEST_F(EventQueue, TieBrokenBySeq)
     EXPECT_EQ(q.rows[row].seq, 1U);
 }
 
+/* UT-57 FR-06 Positive */
 TEST_F(EventQueue, RemoveMovesLastIntoHole)
 {
     Event_t event;
@@ -93,6 +96,7 @@ TEST_F(EventQueue, RemoveMovesLastIntoHole)
     EXPECT_EQ(q.count, 3U);
 }
 
+/* UT-58 FR-06 Boundary */
 TEST_F(EventQueue, FullListRejectsAdd)
 {
     for (uint32_t i = 0U; i < MAX_EVENTS; i++)
@@ -107,6 +111,7 @@ TEST_F(EventQueue, FullListRejectsAdd)
     EXPECT_EQ(eq_add(&q, 1U, EV_SET, 0U, (LogicValue_t)LV_COUNT), STATUS_BAD_ARG);
 }
 
+/* UT-59 FR-06 Negative */
 TEST_F(EventQueue, EmptyListHasNoEarliest)
 {
     uint16_t row = SENTINEL;
@@ -116,6 +121,7 @@ TEST_F(EventQueue, EmptyListHasNoEarliest)
     EXPECT_EQ(eq_find_earliest(nullptr, &row), STATUS_NULL_ARG);
 }
 
+/* UT-60 FR-06 Positive + Negative */
 TEST_F(EventQueue, FindsGateEvent)
 {
     uint16_t row = SENTINEL;

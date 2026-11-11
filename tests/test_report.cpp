@@ -1,6 +1,6 @@
 /**
  * @file    test_report.cpp
- * @brief   Unit tests for report.
+ * @brief   Unit tests for report (UT-76..UT-77).
  * @details Covers the one- and two-character VCD net codes and their limits, and a whole waveform: the
  *          fixture Vcd runs data/ring5 and data/jk_ms with the VCD writer as the kernel's listener and
  *          reads the files back (ReadLines, LastTimeLine) to check the header, the start values, the first
@@ -28,6 +28,7 @@ const char *const RING_VCD_PATH = "build/test_ring5.vcd";
 const char *const JK_MS_VCD_PATH = "build/test_jk_ms.vcd";
 }
 
+/* UT-76 FR-08 Boundary */
 TEST(VcdCode, OneAndTwoCharacterCodes)
 {
     char code[RW_VCD_CODE_SIZE] = "";
@@ -102,6 +103,7 @@ EventQueue_t Vcd::queue;
 SimKernel_t Vcd::k;
 VcdWriter_t Vcd::w;
 
+/* UT-77 FR-08 Positive */
 TEST_F(Vcd, RingFileHeaderAndChanges)
 {
     Diag_t diag = {};
