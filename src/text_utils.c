@@ -1,3 +1,12 @@
+/**
+ * @file    text_utils.c
+ * @brief   Line reader, comments, words, checked numbers, names, bounded copies, error messages, paths
+ *          (output files, relative includes), PORT=NET words.
+ * @details Uses <stdio.h> for the line reader (fopen, fgets, ferror, feof, fclose)
+ *          and for snprintf (error message, path): a recorded MISRA C:2012 Rule 21.6
+ *          deviation. Every stdio result is checked.
+ *          The input modules that use these helpers (netlist, stimulus) have no stdio of their own.
+ */
 #include "text_utils.h"
 
 #include <errno.h>
@@ -6,34 +15,57 @@
 #include <stdlib.h>
 #include <string.h>
 
+/** Base of the numbers in the input files. */
 #define DECIMAL_BASE    10
+/** The character between the two parts of a PORT=NET word. */
 #define ASSIGN_CHAR     '='
 
-/* Tells whether a character separates words (space or tab). */
+/**
+ * @brief   Tells whether a character separates words (space or tab).
+ * @param   c  The character.
+ * @return  true for ' ' and '\t'.
+ */
 static bool is_separator(char c)
 {
     return ((c == ' ') || (c == '\t'));
 }
 
-/* Tells whether a character is a decimal digit. */
+/**
+ * @brief   Tells whether a character is a decimal digit.
+ * @param   c  The character.
+ * @return  true for '0'..'9'.
+ */
 static bool is_digit(char c)
 {
     return ((c >= '0') && (c <= '9'));
 }
 
-/* Tells whether a character may start a name: a letter or '_' (as in a Verilog identifier). */
+/**
+ * @brief   Tells whether a character may start a name: a letter or '_' (as in a Verilog identifier).
+ * @param   c  The character.
+ * @return  true for 'A'..'Z', 'a'..'z' and '_'.
+ */
 static bool is_name_start(char c)
 {
     return (((c >= 'A') && (c <= 'Z')) || ((c >= 'a') && (c <= 'z')) || (c == '_'));
 }
 
-/* Tells whether a character may follow in a name: a letter, a digit, '_' or '.' */
+/**
+ * @brief   Tells whether a character may follow in a name: a letter, a digit, '_' or '.'
+ *          ('.' separates an instance name from an inner name: "FF2.a1").
+ * @param   c  The character.
+ * @return  true for those characters.
+ */
 static bool is_name_char(char c)
 {
     return (is_name_start(c) || is_digit(c) || (c == '.'));
 }
 
-/* Counts the words of a line without changing it. */
+/**
+ * @brief   Counts the words of a line without changing it.
+ * @param   line  The line ('\0'-terminated).
+ * @return  The number of words.
+ */
 static uint32_t count_words(const char *line)
 {
     uint32_t count = 0U;
@@ -71,6 +103,8 @@ Status_t tu_cut_comment(char *line)
 
         while ((line[i] != '\0') && !found)
         {
+            /* "#2" is a delay word; '#' followed by anything else (also the end of the line) starts a comment.
+               line[i + 1] exists because line[i] is not the '\0'. */
             if ((line[i] == '#') && !is_digit(line[i + 1U]))
             {
                 line[i] = '\0';
@@ -100,6 +134,7 @@ Status_t tu_split_words(char *line, char *words[], uint32_t max_words, uint32_t 
     }
     else if (count_words(line) > max_words)
     {
+        /* Checked before anything is written, so a rejected line stays as it was. */
         status = STATUS_TOO_MANY_WORDS;
     }
     else
@@ -155,6 +190,7 @@ Status_t tu_parse_u32(const char *text, uint32_t min_value, uint32_t max_value, 
     {
         uint32_t i = 0U;
 
+        /* strtoul alone would accept " 5", "+3" and "-1", so only digits may pass. */
         while ((text[i] != '\0') && (status == STATUS_OK))
         {
             if (!is_digit(text[i]))
@@ -169,6 +205,7 @@ Status_t tu_parse_u32(const char *text, uint32_t min_value, uint32_t max_value, 
 
             errno = 0;
             value = strtoul(text, NULL, DECIMAL_BASE);
+            /* Compared as unsigned long BEFORE the cast: on 64-bit Linux "4294967296" does not set ERANGE. */
             if ((errno == ERANGE) || (value < (unsigned long)min_value) || (value > (unsigned long)max_value))
             {
                 status = STATUS_BAD_NUMBER;
@@ -195,6 +232,7 @@ Status_t tu_check_name(const char *name)
         uint32_t length = 0U;
         bool valid = is_name_start(name[0]);
 
+        /* Bounded scan: stops at the end of the name or one character past the limit. */
         while ((length < MAX_NAME_LEN) && (name[length] != '\0'))
         {
             if ((length > 0U) && !is_name_char(name[length]))
@@ -203,6 +241,7 @@ Status_t tu_check_name(const char *name)
             }
             length++;
         }
+        /* an empty name fails the first-character test ('\0' is not a letter) */
         if (!valid || (length >= MAX_NAME_LEN))
         {
             status = STATUS_BAD_NAME;
@@ -225,6 +264,7 @@ Status_t tu_copy_text(char *dst, uint32_t dst_size, const char *src)
     }
     else
     {
+        /* the length was checked above, so the text and its '\0' fit */
         (void)memcpy(dst, src, strlen(src) + 1U);
     }
     return status;
@@ -240,6 +280,7 @@ Status_t tu_set_diag(Diag_t *diag, const char *file, uint32_t line, const char *
     }
     else
     {
+        /* built in a local copy, so diag is written only when everything fits */
         Diag_t result;
 
         if (file != NULL)
@@ -288,6 +329,7 @@ Status_t tu_open(LineReader_t *reader, const char *path)
         char copy[MAX_PATH_LEN];
         FILE *fp = NULL;
 
+        /* the path is kept for error messages and relative includes, so it must fit before the file is opened */
         status = tu_copy_text(copy, MAX_PATH_LEN, path);
         if (status == STATUS_OK)
         {
@@ -323,6 +365,7 @@ Status_t tu_read_line(LineReader_t *reader, char *buf, uint32_t buf_size)
     {
         char line[MAX_LINE_LEN];
 
+        /* Read into a local buffer first: buf is written only when the whole line is good. */
         if (fgets(line, (int)buf_size, reader->fp) == NULL)
         {
             if (ferror(reader->fp) != 0)
@@ -346,6 +389,7 @@ Status_t tu_read_line(LineReader_t *reader, char *buf, uint32_t buf_size)
             }
             else if (feof(reader->fp) == 0)
             {
+                /* No '\n' and the file goes on: the rest of the line did not fit. */
                 status = STATUS_LINE_TOO_LONG;
             }
             else
@@ -380,6 +424,7 @@ Status_t tu_close(LineReader_t *reader)
         {
             status = STATUS_FILE_READ;
         }
+        /* The FILE is gone either way, so the reader must not use it again. */
         reader->fp = NULL;
     }
     else
@@ -399,6 +444,7 @@ Status_t tu_join_dir(const char *dir, const char *file_name, char *out, uint32_t
     }
     else if ((dir[0] == '\0') || ((strlen(dir) + 1U + strlen(file_name)) >= (size_t)out_size))
     {
+        /* an empty folder would give "/file", a path from the root */
         status = STATUS_BAD_ARG;
     }
     else
@@ -425,6 +471,7 @@ Status_t tu_split_assign(char *word, char **out_left, char **out_right)
     {
         char *const assign = strchr(word, (int)ASSIGN_CHAR);
 
+        /* exactly one '=', not first ("=Q1") and not last ("J="); checked before the word is changed */
         if ((assign == NULL) || (assign == word) || (assign[1] == '\0') ||
             (strchr(&assign[1], (int)ASSIGN_CHAR) != NULL))
         {
@@ -452,6 +499,8 @@ Status_t tu_join_path(const char *base_file, const char *relative, char *out, ui
     {
         size_t dir_len = 0U;
 
+        /* the folder part of base_file, up to and including its last '/'; none for an absolute relative path
+           or a bare file name */
         if (relative[0] != '/')
         {
             size_t i;

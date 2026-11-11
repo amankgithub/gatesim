@@ -1,3 +1,7 @@
+/**
+ * @file    logic.c
+ * @brief   Lookup tables for 0/1/X gate logic, the gate type names and the value texts.
+ */
 #include "logic.h"
 
 #include <stdbool.h>
@@ -6,14 +10,17 @@
 
 #include "config.h"
 
+/** @brief One row of the gate type name table. */
 typedef struct
 {
-    const char *name;
-    GateType_t  type;
+    const char *name;   /**< name as written in a netlist file */
+    GateType_t  type;   /**< the matching type */
 } GateTypeName_t;
 
+/** Text of lg_type_name for a type that does not exist. */
 #define UNKNOWN_TYPE_NAME   "?"
 
+/** Name of every gate type, as written in a netlist file, in GateType_t order (lg_type_name indexes it by type). */
 static const GateTypeName_t TYPE_NAMES[GT_COUNT] =
 {
     { "AND",  GT_AND  },
@@ -26,7 +33,12 @@ static const GateTypeName_t TYPE_NAMES[GT_COUNT] =
     { "BUF",  GT_BUF  }
 };
 
-/* Tells whether every input value is LV_0, LV_1 or LV_X. */
+/**
+ * @brief   Tells whether every input value is LV_0, LV_1 or LV_X.
+ * @param   inputs  The values.
+ * @param   count   Number of values.
+ * @return  true if all are valid.
+ */
 static bool values_are_valid(const LogicValue_t inputs[], uint32_t count)
 {
     bool valid = true;
@@ -69,7 +81,13 @@ Status_t lg_check_input_count(GateType_t type, uint32_t count)
     return status;
 }
 
-/* Combines the inputs one by one through a 3 x 3 table. */
+/**
+ * @brief   Combines the inputs one by one through a 3 x 3 table.
+ * @param   table   AND, OR or XOR table, indexed [result so far][next input].
+ * @param   inputs  The values (already checked, count >= 1).
+ * @param   count   Number of values.
+ * @return  The combined value.
+ */
 static LogicValue_t combine_inputs(const LogicValue_t table[LV_COUNT][LV_COUNT],
                                    const LogicValue_t inputs[], uint32_t count)
 {
@@ -85,6 +103,8 @@ static LogicValue_t combine_inputs(const LogicValue_t table[LV_COUNT][LV_COUNT],
 
 Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, LogicValue_t *out_value)
 {
+    /* Truth tables indexed [a][b] with a, b in 0, 1, X. A 0 decides an AND and a 1 decides an OR
+       even when the other input is X; XOR has no deciding value. */
     static const LogicValue_t AND_TABLE[LV_COUNT][LV_COUNT] =
     {
         { LV_0, LV_0, LV_0 },
@@ -112,6 +132,7 @@ Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, L
     }
     else
     {
+        /* Also rejects a type >= GT_COUNT (BAD_ARG); the count is checked before any input is read. */
         status = lg_check_input_count(type, count);
         if ((status == STATUS_OK) && !values_are_valid(inputs, count))
         {
@@ -145,9 +166,11 @@ Status_t lg_eval(GateType_t type, const LogicValue_t inputs[], uint32_t count, L
                     result = NOT_TABLE[inputs[0]];
                     break;
                 case GT_BUF:
+                    /* a copy: X stays X */
                     result = inputs[0];
                     break;
                 default:
+                    /* not reached: lg_check_input_count has rejected the type */
                     status = STATUS_BAD_ARG;
                     break;
             }
@@ -225,6 +248,7 @@ Status_t lg_value_from_text(const char *text, LogicValue_t *out_value)
 
 char lg_value_char(LogicValue_t value)
 {
+    /* One character per value, in the order of LogicValue_t. */
     static const char VALUE_CHARS[LV_COUNT] = { '0', '1', 'x' };
     char shown = '?';
 

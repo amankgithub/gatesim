@@ -1,3 +1,11 @@
+/**
+ * @file    test_logic.cpp
+ * @brief   Unit tests for logic.
+ * @details Covers the full 3 x 3 tables of AND, OR and XOR (0, 1 and X on each input), NAND with and
+ *          without a deciding 0, NOT and BUF on every value, XNOR as NOT of XOR, the wrong input counts
+ *          and an invalid value, and the gate type names both ways. No fixture: the helpers Eval2 and
+ *          ExpectTable calculate one two-input gate and compare a whole table.
+ */
 #include <gtest/gtest.h>
 
 #include <cstdint>
@@ -6,9 +14,10 @@
 
 namespace
 {
+/** Value written into an output before a call that must fail, to see that it stays unchanged. */
 constexpr LogicValue_t SENTINEL = 77U;
 
-/* Calculates a two-input gate and checks that the call succeeds. */
+/** Calculates a two-input gate and checks that the call succeeds. */
 LogicValue_t Eval2(GateType_t type, LogicValue_t a, LogicValue_t b)
 {
     const LogicValue_t inputs[2] = {a, b};
@@ -17,9 +26,10 @@ LogicValue_t Eval2(GateType_t type, LogicValue_t a, LogicValue_t b)
     return out;
 }
 
+/** The three values, in table order. */
 const LogicValue_t VALUES[LV_COUNT] = {LV_0, LV_1, LV_X};
 
-/* Checks a two-input gate against an expected table, indexed [a][b] in the order 0, 1, X. */
+/** Checks a two-input gate against an expected table, indexed [a][b] in the order 0, 1, X. */
 void ExpectTable(GateType_t type, const LogicValue_t (&expected)[LV_COUNT][LV_COUNT])
 {
     for (uint32_t a = 0U; a < LV_COUNT; a++)
@@ -30,7 +40,7 @@ void ExpectTable(GateType_t type, const LogicValue_t (&expected)[LV_COUNT][LV_CO
         }
     }
 }
-}
+}  // namespace
 
 TEST(LogicAnd, MatchesTruthTable)
 {
@@ -54,6 +64,7 @@ TEST(LogicOr, MatchesTruthTable)
 
 TEST(LogicNand, ZeroDecidesEvenWithX)
 {
+    /* the 0 decides the AND, so the X does not matter */
     const LogicValue_t inputs[3] = {LV_1, LV_X, LV_0};
     LogicValue_t out = SENTINEL;
 
@@ -98,13 +109,13 @@ TEST(LogicEval, RejectsWrongInputCount)
 
     EXPECT_EQ(lg_eval(GT_NOT, inputs, 2U, &out), STATUS_INPUT_COUNT);
     EXPECT_EQ(lg_eval(GT_AND, inputs, 0U, &out), STATUS_INPUT_COUNT);
-    EXPECT_EQ(lg_eval(GT_AND, inputs, 5U, &out), STATUS_INPUT_COUNT);
+    EXPECT_EQ(lg_eval(GT_AND, inputs, 5U, &out), STATUS_INPUT_COUNT);   /* one more than MAX_GATE_INPUTS */
     EXPECT_EQ(out, SENTINEL);
 }
 
 TEST(LogicEval, RejectsInvalidValue)
 {
-    const LogicValue_t inputs[2] = {LV_1, 3U};
+    const LogicValue_t inputs[2] = {LV_1, 3U};   /* 2 is X, 3 is no value */
     LogicValue_t out = SENTINEL;
 
     EXPECT_EQ(lg_eval(GT_AND, inputs, 2U, &out), STATUS_BAD_ARG);
@@ -124,6 +135,7 @@ TEST(LogicType, ParsesNamesAndRejectsUnknown)
     EXPECT_EQ(lg_type_from_name("", &type), STATUS_UNKNOWN_TYPE);
     EXPECT_EQ(type, GT_OR);
 
+    /* the way back: every type has its name, a type that does not exist gives "?" */
     for (int t = 0; t < static_cast<int>(GT_COUNT); t++)
     {
         const char *name = lg_type_name(static_cast<GateType_t>(t));
@@ -136,6 +148,7 @@ TEST(LogicType, ParsesNamesAndRejectsUnknown)
 
 TEST(LogicXor, MatchesTruthTable)
 {
+    /* no deciding value: any X gives X */
     const LogicValue_t expected[LV_COUNT][LV_COUNT] = {
         {LV_0, LV_1, LV_X},
         {LV_1, LV_0, LV_X},
@@ -143,6 +156,7 @@ TEST(LogicXor, MatchesTruthTable)
     };
     ExpectTable(GT_XOR, expected);
 
+    /* four inputs: 1 when an odd number of them is 1 */
     const LogicValue_t inputs[4] = {LV_1, LV_1, LV_1, LV_0};
     LogicValue_t out = SENTINEL;
     ASSERT_EQ(lg_eval(GT_XOR, inputs, 4U, &out), STATUS_OK);

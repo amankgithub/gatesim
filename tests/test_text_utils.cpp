@@ -1,3 +1,12 @@
+/**
+ * @file    test_text_utils.cpp
+ * @brief   Unit tests for text_utils.
+ * @details Covers the comment cut ('#' versus a "#2" delay word), the word split, the checked number,
+ *          the name check, the line reader (line numbers, CRLF, a line that is too long, a missing file)
+ *          with the small files in tests/data/, the error message, and the three path and PORT=NET
+ *          helpers. No fixture: every test uses local buffers; failing calls must leave their outputs
+ *          unchanged (SENTINEL).
+ */
 #include <gtest/gtest.h>
 
 #include <cstdint>
@@ -10,8 +19,9 @@
 
 namespace
 {
+/** Value written into an output before a call that must fail, to see that it stays unchanged. */
 constexpr uint32_t SENTINEL = 77U;
-}
+}  // namespace
 
 TEST(CutComment, RemovesTrailingComment)
 {
@@ -113,7 +123,9 @@ TEST(ParseU32, RejectsOutOfRange)
 
     EXPECT_EQ(tu_parse_u32("1001", 0U, 1000U, &value), STATUS_BAD_NUMBER);
     EXPECT_EQ(tu_parse_u32("0", 1U, 1000U, &value), STATUS_BAD_NUMBER);
+    /* 2^32: no ERANGE on 64-bit Linux, caught by the compare before the cast */
     EXPECT_EQ(tu_parse_u32("4294967296", 0U, 0xFFFFFFFFU, &value), STATUS_BAD_NUMBER);
+    /* larger than unsigned long: strtoul sets ERANGE */
     EXPECT_EQ(tu_parse_u32("99999999999999999999", 0U, 0xFFFFFFFFU, &value), STATUS_BAD_NUMBER);
     EXPECT_EQ(value, SENTINEL);
 }
@@ -134,6 +146,7 @@ TEST(CheckName, RejectsBadNames)
 
     EXPECT_EQ(tu_check_name(""), STATUS_BAD_NAME);
     EXPECT_EQ(tu_check_name(too_long.c_str()), STATUS_BAD_NAME);
+    /* characters: a letter or '_' first, then letters, digits, '_' and '.' (a valid Verilog name after '.' -> '_') */
     EXPECT_EQ(tu_check_name("a-b"), STATUS_BAD_NAME);
     EXPECT_EQ(tu_check_name("a=b"), STATUS_BAD_NAME);
     EXPECT_EQ(tu_check_name("2a"), STATUS_BAD_NAME);
@@ -148,7 +161,7 @@ TEST(ReadLine, ReadsLinesAndCountsThem)
 
     ASSERT_EQ(tu_open(&reader, "tests/data/lines_ok.txt"), STATUS_OK);
     EXPECT_EQ(reader.line_no, 0U);
-    EXPECT_STREQ(reader.path, "tests/data/lines_ok.txt");
+    EXPECT_STREQ(reader.path, "tests/data/lines_ok.txt");   /* kept for error messages and includes */
     for (const char *text : expected)
     {
         ASSERT_EQ(tu_read_line(&reader, buf, MAX_LINE_LEN), STATUS_OK);
@@ -189,7 +202,7 @@ TEST(ReadLine, RejectsTooLongLine)
     EXPECT_STREQ(buf, "short line");
     EXPECT_EQ(tu_read_line(&reader, buf, MAX_LINE_LEN), STATUS_LINE_TOO_LONG);
     EXPECT_EQ(reader.line_no, 2U);
-    EXPECT_STREQ(buf, "short line");
+    EXPECT_STREQ(buf, "short line");   /* buf unchanged on error */
     EXPECT_EQ(tu_close(&reader), STATUS_OK);
     EXPECT_EQ(reader.fp, nullptr);
 }
@@ -220,6 +233,7 @@ TEST(SetDiag, FormatsWhatAndName)
     EXPECT_EQ(diag.line, 4U);
     EXPECT_STREQ(diag.text, "unknown gate type 'NAN'");
 
+    /* no name: the text alone; no file: "" */
     ASSERT_EQ(tu_set_diag(&diag, nullptr, 0U, "missing end line", nullptr), STATUS_OK);
     EXPECT_STREQ(diag.file, "");
     EXPECT_EQ(diag.line, 0U);
@@ -238,6 +252,7 @@ TEST(JoinDir, AddsSlash)
     ASSERT_EQ(tu_join_dir("output", "waves.vcd", path, MAX_PATH_LEN), STATUS_OK);
     EXPECT_STREQ(path, "output/waves.vcd");
 
+    /* too long for the buffer (16 characters + '\0' need 17 bytes), and an empty folder: BAD_ARG, path unchanged */
     char small[16] = "unchanged";
     EXPECT_EQ(tu_join_dir("output", "waves.vcd", small, sizeof(small)), STATUS_BAD_ARG);
     EXPECT_STREQ(small, "unchanged");
@@ -255,6 +270,7 @@ TEST(SplitAssign, SplitsPortAndNet)
     EXPECT_STREQ(left, "J");
     EXPECT_STREQ(right, "Q1");
 
+    /* exactly one '=' with text on both sides; otherwise SYNTAX and nothing changes */
     const char *const bad[] = {"J=", "=Q1", "JQ1", "J=Q=1"};
     for (const char *text : bad)
     {
@@ -275,13 +291,17 @@ TEST(JoinPath, UsesDirectoryOfBaseFile)
 {
     char path[MAX_PATH_LEN] = "unchanged";
 
+    /* relative to the folder of the including file */
     ASSERT_EQ(tu_join_path("data/counter_0357.net", "../lib/flipflops.net", path, MAX_PATH_LEN), STATUS_OK);
     EXPECT_STREQ(path, "data/../lib/flipflops.net");
+    /* a file in the working folder has no folder part */
     ASSERT_EQ(tu_join_path("x.net", "lib/a.net", path, MAX_PATH_LEN), STATUS_OK);
     EXPECT_STREQ(path, "lib/a.net");
+    /* an absolute path is used as it is */
     ASSERT_EQ(tu_join_path("data/x.net", "/abs/a.net", path, MAX_PATH_LEN), STATUS_OK);
     EXPECT_STREQ(path, "/abs/a.net");
 
+    /* "data/" + "a.net" needs 11 bytes: 10 is too small, path unchanged */
     char small[10] = "unchanged";
     EXPECT_EQ(tu_join_path("data/x.net", "a.net", small, sizeof(small)), STATUS_BAD_ARG);
     EXPECT_STREQ(small, "unchanged");

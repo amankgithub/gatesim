@@ -74,6 +74,7 @@ clean:
 # Static analysis with the cppcheck MISRA C:2012 addon (needs cppcheck installed)
 check:
 	cppcheck --std=c99 --enable=warning,style,performance,portability \
+	         --suppressions-list=tools/misra_suppressions.txt \
 	         --addon=misra --inline-suppr --error-exitcode=1 \
 	         --suppress=missingIncludeSystem -q -I$(INC_DIR) $(SRC_DIR)
 

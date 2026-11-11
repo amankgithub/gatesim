@@ -1,3 +1,7 @@
+/**
+ * @file    test_netlist.cpp
+ * @brief   Unit tests for netlist.
+ */
 #include <gtest/gtest.h>
 
 #include <cstdint>
@@ -10,8 +14,10 @@
 
 namespace
 {
+/** Value written into an output before a call that must fail, to see that it stays unchanged. */
 constexpr uint16_t SENTINEL = 77U;
 
+/** The SR latch, one line per entry. */
 const char *const SR_LATCH_LINES[] = {
     "input  S R",
     "output Q QN",
@@ -19,6 +25,7 @@ const char *const SR_LATCH_LINES[] = {
     "gate n2 NOR #2  QN = S Q",
 };
 
+/** The master-slave JK flip-flop block, as in lib/flipflops.net. */
 const char *const JK_MS_LINES[] = {
     "subckt JK_MS J K CLK PRE CLR -> Q QN",
     "gate m1 NAND #2  a1 = J CLK QN CLR",
@@ -32,14 +39,15 @@ const char *const JK_MS_LINES[] = {
     "gate s4 NAND #2  QN = b2 Q CLR",
     "ends",
 };
-}
+}  // namespace
 
+/** Fixture: one netlist (a static object, about 70 KB), emptied before every test. */
 class NetlistTest : public ::testing::Test
 {
 protected:
     static Netlist_t nl;
-    static NlParseState_t state;
-    static Diag_t diag;
+    static NlParseState_t state;   /**< the parse state kept from one Parse to the next */
+    static Diag_t diag;            /**< message of the last failed Parse or nl_load */
 
     void SetUp() override
     {
@@ -48,14 +56,14 @@ protected:
         diag = Diag_t{};
     }
 
-    /* Parses one line of text (nl_parse_line changes its line, so it gets a copy). */
+    /** Parses one line of text (nl_parse_line changes its line, so it gets a copy). */
     static Status_t Parse(const char *text)
     {
         std::vector<char> line(text, text + std::strlen(text) + 1U);
         return nl_parse_line(&nl, &state, line.data(), &diag);
     }
 
-    /* Parses the JK_MS block lines; every one must be accepted. */
+    /** Parses the JK_MS block lines; every one must be accepted. */
     static void LoadJkMsBlock()
     {
         for (const char *text : JK_MS_LINES)
@@ -64,7 +72,7 @@ protected:
         }
     }
 
-    /* The gate with this name (the test fails if there is none). */
+    /** The gate with this name (the test fails if there is none). */
     static const Gate_t &GateNamed(const char *name)
     {
         uint16_t index = 0U;
@@ -72,7 +80,7 @@ protected:
         return nl.gates[index];
     }
 
-    /* Parses the SR latch lines; every one must be accepted. */
+    /** Parses the SR latch lines; every one must be accepted. */
     static void LoadSrLatch()
     {
         for (const char *text : SR_LATCH_LINES)
@@ -81,7 +89,7 @@ protected:
         }
     }
 
-    /* Splits a gate line and fills a GateSpec_t with nl_parse_gate_words. */
+    /** Splits a gate line and fills a GateSpec_t with nl_parse_gate_words. */
     static Status_t SpecFromLine(const char *text, GateSpec_t *spec)
     {
         std::vector<char> line(text, text + std::strlen(text) + 1U);
@@ -95,7 +103,7 @@ protected:
         return status;
     }
 
-    /* Name of the net in row index. */
+    /** Name of the net in row index. */
     static std::string NetName(uint16_t index)
     {
         return std::string(nl.nets[index].name);
@@ -106,6 +114,7 @@ Netlist_t NetlistTest::nl;
 NlParseState_t NetlistTest::state;
 Diag_t NetlistTest::diag;
 
+/* One fixture name per group of tests (FindOrAdd.*, GateLine.*, ...), all sharing NetlistTest. */
 class FindOrAdd : public NetlistTest
 {
 };
@@ -176,6 +185,7 @@ TEST_F(FindOrAdd, RejectsWhenTableFull)
     EXPECT_EQ(index, SENTINEL);
     EXPECT_EQ(nl.net_count, MAX_NETS);
 
+    /* one free slot, a gate with two new nets (y, z): rejected before anything is added */
     ASSERT_EQ(nl_init(&nl), STATUS_OK);
     for (uint32_t i = 0U; i < (MAX_NETS - 1U); i++)
     {
@@ -188,6 +198,7 @@ TEST_F(FindOrAdd, RejectsWhenTableFull)
     EXPECT_EQ(nl.net_count, MAX_NETS - 1U);
     EXPECT_EQ(nl.gate_count, 0U);
 
+    /* one new net fits */
     ASSERT_EQ(SpecFromLine("gate g1 AND #1 y = n0 n1", &spec), STATUS_OK);
     EXPECT_EQ(nl_add_gate(&nl, &spec), STATUS_OK);
     EXPECT_EQ(nl.net_count, MAX_NETS);
@@ -200,6 +211,7 @@ TEST_F(FindOrAdd, VccAndGndAreConstants)
     uint16_t gnd = SENTINEL;
     uint16_t other = SENTINEL;
 
+    /* created on first mention as constants: driven, with their value from the start */
     ASSERT_EQ(nl_find_or_add_net(&nl, "VCC", &vcc), STATUS_OK);
     ASSERT_EQ(nl_find_or_add_net(&nl, "GND", &gnd), STATUS_OK);
     ASSERT_EQ(nl_find_or_add_net(&nl, "A", &other), STATUS_OK);
@@ -209,6 +221,7 @@ TEST_F(FindOrAdd, VccAndGndAreConstants)
     EXPECT_EQ(nl.nets[gnd].init_value, LV_0);
     EXPECT_EQ(nl.nets[other].driver, DRV_NONE);
     EXPECT_EQ(nl.nets[other].init_value, LV_X);
+    /* only the exact names: "vcc" is an ordinary net */
     ASSERT_EQ(nl_find_or_add_net(&nl, "vcc", &other), STATUS_OK);
     EXPECT_EQ(nl.nets[other].driver, DRV_NONE);
 }
@@ -284,15 +297,17 @@ TEST_F(GateLine, RejectsUnknownTypeAndBadCounts)
 TEST_F(GateLine, RejectsDuplicateNameAndSecondDriver)
 {
     LoadSrLatch();
-    EXPECT_EQ(Parse("gate n1 NOT #1 T = S"), STATUS_DUPLICATE);
+    EXPECT_EQ(Parse("gate n1 NOT #1 T = S"), STATUS_DUPLICATE);     /* the name n1 is taken */
     EXPECT_STREQ(diag.text, "name already used 'n1'");
-    EXPECT_EQ(Parse("gate n3 NOT #1 Q = S"), STATUS_TWO_DRIVERS);
-    EXPECT_EQ(Parse("gate n4 NOT #1 S = R"), STATUS_TWO_DRIVERS);
-    EXPECT_EQ(Parse("gate n5 NOT #1 VCC = R"), STATUS_TWO_DRIVERS);
+    EXPECT_EQ(Parse("gate n3 NOT #1 Q = S"), STATUS_TWO_DRIVERS);   /* Q is driven by n1 */
+    EXPECT_EQ(Parse("gate n4 NOT #1 S = R"), STATUS_TWO_DRIVERS);   /* S is an input */
+    EXPECT_EQ(Parse("gate n5 NOT #1 VCC = R"), STATUS_TWO_DRIVERS); /* VCC is a constant */
     EXPECT_STREQ(diag.text, "net already has a driver 'VCC'");
     EXPECT_EQ(Parse("input GND"), STATUS_TWO_DRIVERS);
+    /* an input line is checked completely before any name is added */
     EXPECT_EQ(Parse("input T Q"), STATUS_TWO_DRIVERS);
     EXPECT_EQ(Parse("input T S"), STATUS_DUPLICATE);
+    /* an output is declared once */
     EXPECT_EQ(Parse("output T Q"), STATUS_DUPLICATE);
     EXPECT_EQ(Parse("output T T"), STATUS_DUPLICATE);
     EXPECT_EQ(nl.net_count, 4U);
@@ -333,7 +348,7 @@ TEST_F(LoadNetlist, Ring5FromFile)
 {
     diag.line = SENTINEL;
     ASSERT_EQ(nl_load(&nl, "data/ring5.net", &diag), STATUS_OK) << diag.text;
-    EXPECT_EQ(diag.line, SENTINEL);
+    EXPECT_EQ(diag.line, SENTINEL);   /* the message is written only on an error */
     EXPECT_EQ(nl.gate_count, 5U);
     EXPECT_EQ(nl.net_count, 6U);
     EXPECT_EQ(nl.input_count, 1U);
@@ -359,14 +374,16 @@ TEST_F(LoadNetlist, ErrorHasFileAndLine)
 
 TEST_F(CheckNetlist, RejectsUndrivenNet)
 {
+    /* g1 reads b, but no input line and no gate drives it */
     EXPECT_EQ(nl_load(&nl, "tests/data/bad_undriven.net", &diag), STATUS_UNDRIVEN);
     EXPECT_STREQ(diag.file, "tests/data/bad_undriven.net");
-    EXPECT_EQ(diag.line, 0U);
+    EXPECT_EQ(diag.line, 0U);   /* the whole circuit is checked after the last line */
     EXPECT_NE(std::string(diag.text).find("'b'"), std::string::npos) << diag.text;
 }
 
 TEST_F(CheckNetlist, WarnsUnusedGateOutput)
 {
+    /* g2 drives t, which no gate reads and which is not an output */
     ASSERT_EQ(nl_load(&nl, "tests/data/warn_unused.net", &diag), STATUS_OK) << diag.text;
     ASSERT_EQ(nl.warning_count, 1U);
     EXPECT_EQ(NetName(nl.unused[0]), "t");
@@ -393,13 +410,14 @@ TEST_F(Block, StoresPortsAndGates)
     {
         EXPECT_STREQ(b.ports[i], ports[i]);
     }
-    EXPECT_EQ(b.first_output_port, 5U);
+    EXPECT_EQ(b.first_output_port, 5U);   /* Q and QN come after "->" */
     ASSERT_EQ(b.gate_count, 9U);
     EXPECT_STREQ(b.gates[0].name, "m1");
     EXPECT_STREQ(b.gates[0].out, "a1");
     EXPECT_EQ(b.gates[0].in_count, 4U);
     EXPECT_STREQ(b.gates[0].in[3], "CLR");
     EXPECT_EQ(b.gates[4].type, GT_NOT);
+    /* a block is only stored: no gate and no net of the circuit yet */
     EXPECT_EQ(nl.gate_count, 0U);
     EXPECT_EQ(nl.net_count, 0U);
     uint8_t found = static_cast<uint8_t>(SENTINEL);
@@ -414,6 +432,7 @@ TEST_F(Inst, ExpandsNamesWithPrefix)
     EXPECT_EQ(nl.gate_count, 9U);
     EXPECT_EQ(nl.inst_count, 1U);
 
+    /* a port becomes the connected net, an inner net INST.name, a gate INST.gate */
     const Gate_t &m1 = GateNamed("FF2.m1");
     ASSERT_EQ(m1.in_count, 4U);
     EXPECT_EQ(NetName(m1.in[0]), "Q1");
@@ -434,6 +453,7 @@ TEST_F(Inst, ExpandsNamesWithPrefix)
     EXPECT_EQ(i1.rise, 1U);
     EXPECT_EQ(i1.fall, 1U);
 
+    /* VCC inside a block is the circuit's VCC, never renamed (P1.VCC would be an undriven net) */
     ASSERT_EQ(Parse("subckt TIE A -> Y"), STATUS_OK);
     ASSERT_EQ(Parse("gate g AND #1 Y = A VCC"), STATUS_OK);
     ASSERT_EQ(Parse("ends"), STATUS_OK);
@@ -450,7 +470,7 @@ TEST_F(Inst, ExpandsNamesWithPrefix)
 TEST_F(Inst, RejectsBadPorts)
 {
     LoadJkMsBlock();
-    EXPECT_EQ(Parse("inst FF JK_MS J=a K=b CLK=c PRE=d Q=e QN=f"), STATUS_BAD_PORT);
+    EXPECT_EQ(Parse("inst FF JK_MS J=a K=b CLK=c PRE=d Q=e QN=f"), STATUS_BAD_PORT);   /* CLR missing */
     EXPECT_STREQ(diag.text, "port missing, unknown or connected twice 'CLR'");
     EXPECT_EQ(Parse("inst FF JK_MS J=a K=b CLK=c PRE=d CLR=g Q=e QN=f X=Y"), STATUS_BAD_PORT);
     EXPECT_STREQ(diag.text, "port missing, unknown or connected twice 'X'");
@@ -460,6 +480,7 @@ TEST_F(Inst, RejectsBadPorts)
     EXPECT_EQ(Parse("inst FF JK_XX J=a K=b CLK=c PRE=d CLR=g Q=e QN=f"), STATUS_NOT_FOUND);
     EXPECT_STREQ(diag.text, "name not found 'JK_XX'");
     EXPECT_EQ(Parse("inst FF JK_MS"), STATUS_SYNTAX);
+    /* the ports are checked before any gate is added */
     EXPECT_EQ(nl.gate_count, 0U);
     EXPECT_EQ(nl.net_count, 0U);
     EXPECT_EQ(nl.inst_count, 0U);
@@ -469,15 +490,17 @@ TEST_F(Subckt, RejectsNestingAndUnclosedBlock)
 {
     ASSERT_EQ(Parse("subckt INV A -> Y"), STATUS_OK);
     ASSERT_EQ(Parse("gate g1 NOT #1  Y = A"), STATUS_OK);
+    /* a block holds only gate lines */
     EXPECT_EQ(Parse("inst U1 INV A=a Y=y"), STATUS_NESTING);
     EXPECT_STREQ(diag.text, "not allowed here 'inst'");
     EXPECT_EQ(Parse("subckt BUF2 A -> Y"), STATUS_NESTING);
     EXPECT_EQ(Parse("input a"), STATUS_NESTING);
     ASSERT_EQ(Parse("ends"), STATUS_OK);
-    EXPECT_EQ(Parse("ends"), STATUS_NESTING);
+    EXPECT_EQ(Parse("ends"), STATUS_NESTING);   /* no open block */
     EXPECT_EQ(nl.block_count, 1U);
     EXPECT_EQ(nl.net_count, 0U);
 
+    /* the file ends inside a block */
     EXPECT_EQ(nl_load(&nl, "tests/data/unclosed_block.net", &diag), STATUS_NESTING);
     EXPECT_STREQ(diag.file, "tests/data/unclosed_block.net");
     EXPECT_EQ(diag.line, 3U);
@@ -486,18 +509,20 @@ TEST_F(Subckt, RejectsNestingAndUnclosedBlock)
 
 TEST_F(Include, LoadsLibraryRelativeToFile)
 {
+    /* data/jk_ms.net has "include ../lib/flipflops.net": relative to data/, not to the working folder */
     ASSERT_EQ(nl_load(&nl, "data/jk_ms.net", &diag), STATUS_OK) << diag.file << ":" << diag.line << ": " << diag.text;
-    EXPECT_EQ(nl.block_count, 4U);
+    EXPECT_EQ(nl.block_count, 4U);   /* JK_MS, JK_LEVEL, SR_NOR, D_LATCH */
     EXPECT_EQ(nl.gate_count, 9U);
     EXPECT_EQ(nl.inst_count, 1U);
     uint16_t index = SENTINEL;
-    EXPECT_EQ(nl_find_net(&nl, "FF.y", &index), STATUS_OK);
+    EXPECT_EQ(nl_find_net(&nl, "FF.y", &index), STATUS_OK);   /* an inner net of the instance FF */
     EXPECT_EQ(nl_find_net(&nl, "Q", &index), STATUS_OK);
     EXPECT_EQ(nl.nets[index].driver, DRV_GATE);
 }
 
 TEST_F(Include, RejectsNestedInclude)
 {
+    /* nested_include.net includes include_again.net, whose line 2 is another include */
     EXPECT_EQ(nl_load(&nl, "tests/data/nested_include.net", &diag), STATUS_NESTING);
     EXPECT_STREQ(diag.file, "tests/data/include_again.net");
     EXPECT_EQ(diag.line, 2U);
@@ -506,6 +531,7 @@ TEST_F(Include, RejectsNestedInclude)
 
 TEST_F(Library, CounterAndAdderSizes)
 {
+    /* the 0-3-5-7 counter: 3 x 9 gates + K0, and VCC created on first mention */
     ASSERT_EQ(nl_load(&nl, "data/counter_0357.net", &diag), STATUS_OK) << diag.text;
     EXPECT_EQ(nl.gate_count, 28U);
     EXPECT_EQ(nl.net_count, 36U);
